@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import { reminderDeliverySettings } from '@/routes/organizations';
 import { index } from '@/routes/organizations/invoices';
+import { index as deliveryLog } from '@/routes/organizations/reminder-deliveries';
 
 export default function OrganizationPage({
     name,
@@ -34,6 +35,12 @@ export default function OrganizationPage({
             </Button>
             <section className="w-full space-y-3 rounded-xl border p-4">
                 <h2 className="font-semibold">Fizetési emlékeztetők</h2>
+                <Link
+                    className="inline-block text-sm underline"
+                    href={deliveryLog(organizationId)}
+                >
+                    Tesztküldési napló
+                </Link>
                 <p className="text-sm text-muted-foreground" role="status">
                     {remindersEnabled
                         ? 'Küldés engedélyezve'

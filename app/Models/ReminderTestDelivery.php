@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property ReminderTestDeliveryStatus $status
  * @property string|null $reason
  * @property Carbon|null $available_at
+ * @property Carbon $created_at
  * @property Carbon $updated_at
  */
 #[Fillable(['status', 'reason', 'available_at'])]
