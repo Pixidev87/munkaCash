@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int $customer_id
  * @property string $invoice_number
  * @property Carbon $due_date
  * @property int $gross_amount
@@ -28,6 +29,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
+            'customer_id' => 'integer',
             'due_date' => 'date',
             'gross_amount' => 'integer',
             'outstanding_amount' => 'integer',
