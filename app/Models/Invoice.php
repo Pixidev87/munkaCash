@@ -6,11 +6,13 @@ use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $customer_id
+ * @property string $currency
  * @property string $invoice_number
  * @property Carbon $due_date
  * @property int $gross_amount
@@ -49,5 +51,11 @@ class Invoice extends Model
     public function checker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_by');
+    }
+
+    /** @return HasMany<ReminderApproval, $this> */
+    public function reminderApprovals(): HasMany
+    {
+        return $this->hasMany(ReminderApproval::class);
     }
 }

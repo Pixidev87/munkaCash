@@ -5,21 +5,42 @@ namespace App\Services;
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\Organization;
+use Illuminate\Support\Facades\Config;
 
 class ReminderPreview
 {
-    /** @return array{blockers: list<string>, message: array{recipient: string, subject: string, body: string}|null} */
+    public const string TEMPLATE_VERSION = 'v1';
+
+    /** @return array{blockers: list<string>, message: array{recipient: string, subject: string, body: string}|null, fingerprint: string|null} */
     public function prepare(Organization $company, Invoice $invoice): array
     {
         $blockers = $this->blockers($invoice);
         $recipient = $invoice->customer->billing_email;
         $outstanding = $invoice->outstanding_amount;
 
+        $message = $blockers === [] && $recipient !== null && $outstanding !== null
+            ? $this->render($company, $invoice, $recipient, $outstanding)
+            : null;
+
         return [
             'blockers' => $blockers,
-            'message' => $blockers === [] && $recipient !== null && $outstanding !== null
-                ? $this->render($company, $invoice, $recipient, $outstanding)
-                : null,
+            'message' => $message,
+            'fingerprint' => $message === null ? null : hash_hmac('sha256', json_encode([
+                'reminder-approval',
+                self::TEMPLATE_VERSION,
+                $company->id,
+                $invoice->id,
+                $invoice->revision,
+                $invoice->status->value,
+                $invoice->due_date->toDateString(),
+                $invoice->currency,
+                $invoice->gross_amount,
+                $invoice->outstanding_amount,
+                $invoice->status_checked_at?->toISOString(),
+                $invoice->customer_id,
+                $invoice->customer->billing_email_revision,
+                $message,
+            ], JSON_THROW_ON_ERROR), Config::string('app.key')),
         ];
     }
 
