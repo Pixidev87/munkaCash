@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
 use App\Services\ReminderApprovalStatus;
+use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,7 +26,7 @@ class SendReminderTest implements ShouldQueue
 
     public function __construct(public readonly string $deliveryId) {}
 
-    public function handle(ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer): void
+    public function handle(ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls): void
     {
         $claimed = ReminderTestDelivery::query()->whereKey($this->deliveryId)
             ->where('status', Status::Pending)
@@ -45,7 +46,7 @@ class SendReminderTest implements ShouldQueue
                 return;
             }
 
-            DB::transaction(function () use ($originalInvoice, $preview, $status, $mailer): void {
+            DB::transaction(function () use ($originalInvoice, $preview, $status, $mailer, $controls): void {
                 $company = Organization::query()->lockForUpdate()->find($originalInvoice->organization_id);
                 $invoice = $company?->invoices()->lockForUpdate()->find($originalInvoice->id);
                 $customer = $invoice === null ? null : $company->customers()->lockForUpdate()->find($invoice->customer_id);
@@ -62,6 +63,13 @@ class SendReminderTest implements ShouldQueue
                 }
 
                 $invoice->setRelation('customer', $customer);
+                $blocker = $controls->blocker($company, $invoice);
+                if ($blocker !== null) {
+                    $this->finish(Status::Blocked, $blocker);
+
+                    return;
+                }
+
                 $draft = $preview->prepare($company, $invoice);
                 $approvalStatus = $status->evaluate($company, $approval, $draft['fingerprint']);
                 if ($approvalStatus !== 'active' || $draft['message'] === null) {

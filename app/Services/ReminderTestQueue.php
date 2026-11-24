@@ -4,12 +4,32 @@ namespace App\Services;
 
 use App\Enums\ReminderTestDeliveryStatus as Status;
 use App\Jobs\SendReminderTest;
+use App\Models\Customer;
+use App\Models\Organization;
 use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
 
 class ReminderTestQueue
 {
     public const string NAME = 'reminder-tests';
+
+    public function blockPending(Organization $company, string $reason, ?Customer $customer = null): void
+    {
+        $invoices = $company->invoices()->select('id');
+        if ($customer !== null) {
+            $invoices->where('customer_id', $customer->id);
+        }
+
+        $deliveries = ReminderTestDelivery::query()
+            ->whereIn('reminder_approval_id', ReminderApproval::query()->select('id')->whereIn('invoice_id', $invoices));
+
+        (clone $deliveries)->where('status', Status::Pending)
+            ->update(['status' => Status::Blocked, 'reason' => $reason]);
+
+        // A claimed job may have already reached SMTP before the worker stopped.
+        $deliveries->where('status', Status::Sending)
+            ->update(['status' => Status::Unknown, 'reason' => 'transport_unconfirmed']);
+    }
 
     public function dispatchPending(): void
     {

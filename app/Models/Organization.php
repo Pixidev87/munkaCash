@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
+ * @property bool $reminders_enabled
  * @property string $name
  */
 #[Fillable(['name'])]
@@ -18,6 +19,11 @@ class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return ['reminders_enabled' => 'boolean'];
+    }
 
     /** @return BelongsToMany<User, $this> */
     public function users(): BelongsToMany

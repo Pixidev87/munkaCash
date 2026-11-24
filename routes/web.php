@@ -5,6 +5,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ReminderDeliverySettingsController;
 use App\Http\Controllers\ReminderPreviewController;
 use App\Http\Controllers\ReminderTestDeliveryController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereNumber('organization')
         ->name('organizations.')
         ->group(function () {
+            Route::patch('reminder-delivery-settings', [ReminderDeliverySettingsController::class, 'organization'])
+                ->name('reminder-delivery-settings');
+            Route::patch('customers/{customer}/contact-restriction', [ReminderDeliverySettingsController::class, 'customer'])
+                ->whereNumber('customer')
+                ->name('customers.contact-restriction');
             Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
             Route::prefix('customers/{customer}/billing-contact')->whereNumber('customer')
                 ->name('customers.billing-contact.')->group(function () {

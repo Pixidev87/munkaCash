@@ -13,16 +13,20 @@ class BillingContactController extends Controller
 {
     public function edit(Request $request, string $organization, string $customer): Response
     {
-        $contact = $this->customer($request, $organization, $customer);
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $contact = $company->customers()->findOrFail($customer);
 
         return Inertia::render('organizations/billing-contact', [
             'organizationId' => $organization,
+            'canManageReminders' => $user->can('approveReminder', $company),
             'customer' => [
                 'id' => (string) $contact->id,
                 'name' => $contact->display_name,
                 'billingEmail' => $contact->billing_email,
                 'confirmed' => $contact->billing_email_confirmed_at !== null,
                 'revision' => $contact->billing_email_revision,
+                'doNotContact' => $contact->do_not_contact,
             ],
         ]);
     }

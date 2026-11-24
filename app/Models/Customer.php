@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property bool $do_not_contact
  * @property string $display_name
  * @property string|null $billing_email
  * @property Carbon|null $billing_email_confirmed_at
@@ -19,6 +20,7 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
+            'do_not_contact' => 'boolean',
             'billing_email_confirmed_at' => 'datetime',
             'billing_email_revision' => 'integer',
         ];

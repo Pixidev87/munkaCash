@@ -122,11 +122,94 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertDatabaseCount('reminder_test_deliveries', 0);
     }
 
+    public function test_company_pause_blocks_its_queued_delivery_and_resuming_does_not_requeue_it(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        [, , , $otherApproval] = $this->approvedDraft();
+        $otherDelivery = $otherApproval->testDelivery()->create(['status' => 'pending']);
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+
+        $settings = route('organizations.reminder-delivery-settings', $company);
+        $this->actingAs($owner)->patch($settings, ['enabled' => '0'])->assertRedirect(route('organizations.show', $company));
+
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'organization_paused',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'pending']);
+
+        $this->post(route('organizations.invoices.reminder-test-delivery', [$company, $invoice]), [
+            'approval_id' => $approval->id,
+        ])->assertSessionHasErrors('delivery');
+        $this->patch($settings, ['enabled' => '1'])->assertSessionHasNoErrors();
+
+        $this->mock(ReminderTestMailer::class)->shouldNotReceive('send');
+        app()->call((new SendReminderTest($delivery->id))->handle(...));
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'blocked']);
+    }
+
+    public function test_customer_restriction_records_the_actor_and_blocks_only_that_customers_pending_delivery(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $customer = $invoice->customer;
+        $target = $approval->testDelivery()->create(['status' => 'pending']);
+        $otherCustomer = $company->customers()->create(['display_name' => 'Másik ügyfél']);
+        $otherInvoice = $company->invoices()->create([
+            'customer_id' => $otherCustomer->id,
+            'invoice_number' => '00043',
+            'due_date' => '2026-12-01',
+            'gross_amount' => 120_000,
+        ]);
+        $otherApproval = $otherInvoice->reminderApprovals()->create([
+            'approved_by' => $owner->id, 'fingerprint' => $approval->fingerprint,
+            'invoice_number' => '00043', 'currency' => 'HUF', 'outstanding_amount' => 80_000,
+            'template_version' => 'v1', 'approved_at' => now(), 'expires_at' => now()->addMinutes(30),
+        ]);
+        $other = $otherApproval->testDelivery()->create(['status' => 'pending']);
+
+        $url = route('organizations.customers.contact-restriction', [$company, $customer]);
+        $this->actingAs($owner)->patch($url, ['do_not_contact' => '1'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id, 'do_not_contact' => true, 'do_not_contact_updated_by' => $owner->id,
+            'do_not_contact_updated_at' => now()->toDateTimeString(),
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $target->id, 'status' => 'blocked', 'reason' => 'customer_do_not_contact',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $other->id, 'status' => 'pending']);
+
+        $this->get(route('organizations.invoices.reminder-preview', [$company, $invoice]))
+            ->assertInertia(fn (Assert $page) => $page->where('deliveryBlocker', 'customer_do_not_contact'));
+        $this->patch($url, ['do_not_contact' => '0'])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('customers', ['id' => $customer->id, 'do_not_contact' => false]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $target->id, 'status' => 'blocked']);
+    }
+
+    public function test_settings_default_to_paused_and_reject_invalid_or_unauthorized_updates(): void
+    {
+        [$company, $owner, $invoice] = $this->approvedDraft();
+        [, , $foreignInvoice] = $this->approvedDraft();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active', 'role' => 'member']);
+        $settings = route('organizations.reminder-delivery-settings', $company);
+        $customer = route('organizations.customers.contact-restriction', [$company, $invoice->customer]);
+
+        $this->assertFalse(Organization::factory()->create()->refresh()->reminders_enabled);
+        $this->actingAs($owner)->patch($settings, ['enabled' => 'invalid'])->assertSessionHasErrors('enabled');
+        $this->patch($customer, [])->assertSessionHasErrors('do_not_contact');
+        $this->patch(route('organizations.customers.contact-restriction', [$company, $foreignInvoice->customer]), [
+            'do_not_contact' => true,
+        ])->assertNotFound();
+        $this->actingAs($member)->patch($settings, ['enabled' => false])->assertForbidden();
+        $this->patch($customer, ['do_not_contact' => true])->assertForbidden();
+        $this->assertTrue($company->refresh()->reminders_enabled);
+        $this->assertFalse($invoice->customer->refresh()->do_not_contact);
+    }
+
     /** @return array{Organization, User, Invoice, ReminderApproval} */
     private function approvedDraft(string $recipient = 'billing@example.test'): array
     {
         $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
-        $company = Organization::factory()->create();
+        $company = Organization::factory()->create(['reminders_enabled' => true]);
         $owner = User::factory()->create();
         $owner->organizations()->attach($company, ['status' => 'active', 'role' => 'owner']);
         $customer = $company->customers()->create(['display_name' => 'Minta Ügyfél Kft.']);
