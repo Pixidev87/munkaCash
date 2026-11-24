@@ -33,6 +33,7 @@ class OrganizationController extends Controller
             'name' => $selected->name,
             'organizationId' => (string) $selected->id,
             'remindersEnabled' => $selected->reminders_enabled,
+            'canExportData' => $request->user()->can('exportData', $selected),
             'canManageReminders' => $request->user()->can('approveReminder', $selected),
         ]);
     }

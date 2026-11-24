@@ -5,6 +5,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationExportController;
 use App\Http\Controllers\ReminderDeliveryLogController;
 use App\Http\Controllers\ReminderDeliverySettingsController;
 use App\Http\Controllers\ReminderPreviewController;
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereNumber('organization')
         ->name('organizations.')
         ->group(function () {
+            Route::get('exports/customers', [OrganizationExportController::class, 'customers'])
+                ->name('exports.customers');
+            Route::get('exports/invoices', [OrganizationExportController::class, 'invoices'])
+                ->name('exports.invoices');
             Route::get('reminder-deliveries', [ReminderDeliveryLogController::class, 'index'])
                 ->name('reminder-deliveries.index');
             Route::patch('reminder-delivery-settings', [ReminderDeliverySettingsController::class, 'organization'])
