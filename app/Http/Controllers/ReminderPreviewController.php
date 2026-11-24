@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ReminderApprovalStatus;
+use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,7 @@ class ReminderPreviewController extends Controller
 {
     private const int APPROVAL_MINUTES = 30;
 
-    public function show(Request $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer): Response
+    public function show(Request $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls): Response
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
@@ -42,6 +43,7 @@ class ReminderPreviewController extends Controller
             'fingerprint' => $canApprove ? $draft['fingerprint'] : null,
             'approvalMinutes' => self::APPROVAL_MINUTES,
             'testDeliveryEnabled' => $mailer->enabled(),
+            'deliveryBlocker' => $controls->blocker($company, $selected),
             'testRecipient' => $draft['message'] !== null && $mailer->accepts($draft['message']['recipient']),
             'testDelivery' => $delivery === null ? null : [
                 'status' => $delivery->status->value,

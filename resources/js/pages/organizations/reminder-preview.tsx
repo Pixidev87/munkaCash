@@ -23,6 +23,7 @@ type Props = {
     fingerprint: string | null;
     approvalMinutes: number;
     testDeliveryEnabled: boolean;
+    deliveryBlocker: 'organization_paused' | 'customer_do_not_contact' | null;
     testRecipient: boolean;
     testDelivery: {
         status: keyof typeof deliveryLabels;
@@ -63,6 +64,8 @@ const deliveryLabels = {
 };
 
 const deliveryReasons: Record<string, string> = {
+    organization_paused: 'A cég emlékeztetői szünetelnek.',
+    customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
     missing_record: 'A számla vagy a jóváhagyás már nem érhető el.',
     approval_expired:
         'A jóváhagyás lejárt, mielőtt a feldolgozó elindult volna.',
@@ -86,6 +89,7 @@ export default function ReminderPreviewPage({
     fingerprint,
     approvalMinutes,
     testDeliveryEnabled,
+    deliveryBlocker,
     testRecipient,
     testDelivery,
     approval,
@@ -282,7 +286,14 @@ export default function ReminderPreviewPage({
                 </section>
             )}
 
+            {deliveryBlocker && (
+                <p className="text-sm text-muted-foreground">
+                    {deliveryReasons[deliveryBlocker]}
+                </p>
+            )}
+
             {testDeliveryEnabled &&
+                !deliveryBlocker &&
                 canApprove &&
                 approval?.status === 'active' &&
                 !testDelivery &&

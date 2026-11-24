@@ -32,6 +32,8 @@ class OrganizationController extends Controller
         return Inertia::render('organizations/show', [
             'name' => $selected->name,
             'organizationId' => (string) $selected->id,
+            'remindersEnabled' => $selected->reminders_enabled,
+            'canManageReminders' => $request->user()->can('approveReminder', $selected),
         ]);
     }
 }

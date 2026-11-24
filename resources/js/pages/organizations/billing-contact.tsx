@@ -3,6 +3,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { contactRestriction } from '@/routes/organizations/customers';
 import {
     confirm,
     update,
@@ -11,18 +12,21 @@ import { index } from '@/routes/organizations/invoices';
 
 type Props = {
     organizationId: string;
+    canManageReminders: boolean;
     customer: {
         id: string;
         name: string;
         billingEmail: string | null;
         confirmed: boolean;
         revision: number;
+        doNotContact: boolean;
     };
 };
 
 export default function BillingContactPage({
     organizationId,
     customer,
+    canManageReminders,
 }: Props) {
     const routeArgs = { organization: organizationId, customer: customer.id };
 
@@ -133,6 +137,51 @@ export default function BillingContactPage({
                     )}
                 </section>
             )}
+            <section className="space-y-3 rounded-xl border p-4">
+                <h2 className="font-semibold">Ügyfél emlékeztetői</h2>
+                <p className="text-sm text-muted-foreground" role="status">
+                    {customer.doNotContact
+                        ? 'Emlékeztetők tiltva'
+                        : 'Nincs ügyfélszintű tiltás'}
+                </p>
+                {canManageReminders && (
+                    <>
+                        <p className="text-sm text-muted-foreground">
+                            A tiltás leállítja az ügyfél várakozó
+                            tesztküldéseit, és címcsere után is érvényben marad.
+                        </p>
+                        <Form
+                            {...contactRestriction.form(routeArgs)}
+                            className="space-y-2"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="do_not_contact"
+                                        value={
+                                            customer.doNotContact ? '0' : '1'
+                                        }
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="outline"
+                                        disabled={processing}
+                                    >
+                                        {customer.doNotContact
+                                            ? 'Tiltás feloldása'
+                                            : 'Emlékeztetők tiltása'}
+                                    </Button>
+                                    <InputError
+                                        message={errors.do_not_contact}
+                                        role="alert"
+                                    />
+                                </>
+                            )}
+                        </Form>
+                    </>
+                )}
+            </section>
         </div>
     );
 }
