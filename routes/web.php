@@ -28,9 +28,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     Route::patch('/', [BillingContactController::class, 'update'])->name('update');
                     Route::post('confirm', [BillingContactController::class, 'confirm'])->name('confirm');
                 });
-            Route::get('invoices/{invoice}/reminder-preview', ReminderPreviewController::class)
+            Route::get('invoices/{invoice}/reminder-preview', [ReminderPreviewController::class, 'show'])
                 ->whereNumber('invoice')
                 ->name('invoices.reminder-preview');
+            Route::post('invoices/{invoice}/reminder-approval', [ReminderPreviewController::class, 'approve'])
+                ->whereNumber('invoice')
+                ->name('invoices.reminder-approval');
             Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
             Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
             Route::prefix('invoice-imports')->name('invoice-imports.')->group(function () {
