@@ -9,10 +9,15 @@ class OrganizationPolicy
 {
     public function approveReminder(User $user, Organization $organization): bool
     {
-        return $this->isActiveOwner($user, $organization);
+        return ! $organization->isClosing() && $this->isActiveOwner($user, $organization);
     }
 
     public function exportData(User $user, Organization $organization): bool
+    {
+        return $this->isActiveOwner($user, $organization);
+    }
+
+    public function closeout(User $user, Organization $organization): bool
     {
         return $this->isActiveOwner($user, $organization);
     }

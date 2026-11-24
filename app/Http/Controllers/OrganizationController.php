@@ -33,7 +33,13 @@ class OrganizationController extends Controller
             'name' => $selected->name,
             'organizationId' => (string) $selected->id,
             'remindersEnabled' => $selected->reminders_enabled,
-            'canExportData' => $request->user()->can('exportData', $selected),
+            'canExportData' => $selected->exportAvailable() && $request->user()->can('exportData', $selected),
+            'closeout' => $selected->isClosing() ? [
+                'startedAt' => $selected->closeout_started_at?->toISOString(),
+                'exportUntil' => $selected->export_until?->toISOString(),
+                'exportAvailable' => $selected->exportAvailable(),
+            ] : null,
+            'canStartCloseout' => ! $selected->isClosing() && $request->user()->can('closeout', $selected),
             'canManageReminders' => $request->user()->can('approveReminder', $selected),
         ]);
     }

@@ -13,6 +13,7 @@ class OrganizationExportController extends Controller
     {
         $company = $request->user()->findActiveOrganization($organization);
         Gate::authorize('exportData', $company);
+        abort_unless($company->exportAvailable(), 410, 'A cég exportálási időszaka lejárt.');
 
         return $export->customers($company);
     }
@@ -21,6 +22,7 @@ class OrganizationExportController extends Controller
     {
         $company = $request->user()->findActiveOrganization($organization);
         Gate::authorize('exportData', $company);
+        abort_unless($company->exportAvailable(), 410, 'A cég exportálási időszaka lejárt.');
 
         return $export->invoices($company);
     }

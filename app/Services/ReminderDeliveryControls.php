@@ -7,6 +7,8 @@ use App\Models\Organization;
 
 class ReminderDeliveryControls
 {
+    public const string ORGANIZATION_CLOSING = 'organization_closing';
+
     public const string ORGANIZATION_PAUSED = 'organization_paused';
 
     public const string CUSTOMER_BLOCKED = 'customer_do_not_contact';
@@ -14,6 +16,7 @@ class ReminderDeliveryControls
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {
+            $company->isClosing() => self::ORGANIZATION_CLOSING,
             ! $company->reminders_enabled => self::ORGANIZATION_PAUSED,
             $invoice->customer->do_not_contact => self::CUSTOMER_BLOCKED,
             default => null,
