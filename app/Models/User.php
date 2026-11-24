@@ -49,6 +49,11 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->organizations()->wherePivot('status', 'active');
     }
 
+    public function findActiveOrganization(string $id): Organization
+    {
+        return $this->activeOrganizations()->findOrFail($id);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

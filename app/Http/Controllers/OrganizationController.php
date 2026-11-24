@@ -27,11 +27,11 @@ class OrganizationController extends Controller
 
     public function show(Request $request, string $organization): Response
     {
-        $selected = $request->user()->activeOrganizations()
-            ->findOrFail($organization, ['organizations.name']);
+        $selected = $request->user()->findActiveOrganization($organization);
 
         return Inertia::render('organizations/show', [
             'name' => $selected->name,
+            'organizationId' => (string) $selected->id,
         ]);
     }
 }
