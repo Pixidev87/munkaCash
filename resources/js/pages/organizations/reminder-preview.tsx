@@ -25,9 +25,11 @@ type Props = {
     testDeliveryEnabled: boolean;
     deliveryBlocker: 'organization_paused' | 'customer_do_not_contact' | null;
     testRecipient: boolean;
+    lastDeliveryAttemptAt: string | null;
     testDelivery: {
         status: keyof typeof deliveryLabels;
         reason: string | null;
+        availableAt: string | null;
     } | null;
     approval: {
         id: string;
@@ -66,6 +68,10 @@ const deliveryLabels = {
 const deliveryReasons: Record<string, string> = {
     organization_paused: 'A cég emlékeztetői szünetelnek.',
     customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
+    cooldown:
+        'A legutóbbi küldési kísérlettől számítva hét napnak kell eltelnie.',
+    outside_window: 'A jóváhagyás érvényessége alatt nincs küldési ablak.',
+    calendar_unavailable: 'Ehhez az évhez még nincs ellenőrzött munkanaptár.',
     missing_record: 'A számla vagy a jóváhagyás már nem érhető el.',
     approval_expired:
         'A jóváhagyás lejárt, mielőtt a feldolgozó elindult volna.',
@@ -91,6 +97,7 @@ export default function ReminderPreviewPage({
     testDeliveryEnabled,
     deliveryBlocker,
     testRecipient,
+    lastDeliveryAttemptAt,
     testDelivery,
     approval,
 }: Props) {
@@ -261,6 +268,15 @@ export default function ReminderPreviewPage({
                 </Form>
             )}
 
+            {testDeliveryEnabled && lastDeliveryAttemptAt && (
+                <p className="text-sm text-muted-foreground">
+                    Utolsó küldési kísérlet{' '}
+                    <time dateTime={lastDeliveryAttemptAt}>
+                        {checkedDate.format(new Date(lastDeliveryAttemptAt))}
+                    </time>
+                </p>
+            )}
+
             {testDelivery && (
                 <section
                     className="space-y-2 rounded-xl border p-4"
@@ -274,6 +290,17 @@ export default function ReminderPreviewPage({
                             {deliveryReasons[testDelivery.reason]}
                         </p>
                     )}
+                    {testDelivery.status === 'pending' &&
+                        testDelivery.availableAt && (
+                            <p className="text-sm text-muted-foreground">
+                                Legkorábbi feldolgozás{' '}
+                                <time dateTime={testDelivery.availableAt}>
+                                    {checkedDate.format(
+                                        new Date(testDelivery.availableAt),
+                                    )}
+                                </time>
+                            </p>
+                        )}
                     {(testDelivery.status === 'pending' ||
                         testDelivery.status === 'sending') && (
                         <Button

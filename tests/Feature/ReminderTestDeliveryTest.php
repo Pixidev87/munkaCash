@@ -205,10 +205,94 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertFalse($invoice->customer->refresh()->do_not_contact);
     }
 
-    /** @return array{Organization, User, Invoice, ReminderApproval} */
-    private function approvedDraft(string $recipient = 'billing@example.test'): array
+    public function test_delivery_waits_for_opening_if_the_approval_will_still_be_active(): void
     {
-        $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft(at: '2026-12-02 07:45:00');
+        $url = route('organizations.invoices.reminder-test-delivery', [$company, $invoice]);
+
+        $this->actingAs($owner)->post($url, ['approval_id' => $approval->id])->assertSessionHasNoErrors();
+        $delivery = $approval->testDelivery()->sole();
+        $this->assertSame('2026-12-02T07:00:00.000000Z', $delivery->available_at?->toISOString());
+
+        Queue::fake();
+        app(ReminderTestQueue::class)->dispatchPending();
+        Queue::assertNothingPushed();
+        app()->call((new SendReminderTest($delivery->id))->handle(...));
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'pending']);
+
+        $this->travel(15)->minutes();
+        app(ReminderTestQueue::class)->dispatchPending();
+        Queue::assertPushedOn(ReminderTestQueue::NAME, SendReminderTest::class);
+    }
+
+    public function test_worker_rechecks_the_window_before_handing_off_the_message(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft(at: '2026-12-02 17:50:00');
+        $this->actingAs($owner)->post(
+            route('organizations.invoices.reminder-test-delivery', [$company, $invoice]),
+            ['approval_id' => $approval->id],
+        )->assertSessionHasNoErrors();
+        $delivery = $approval->testDelivery()->sole();
+
+        $this->travel(10)->minutes();
+        $this->mock(ReminderTestMailer::class)->shouldNotReceive('send');
+        app()->call((new SendReminderTest($delivery->id))->handle(...));
+
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'outside_window',
+        ]);
+    }
+
+    public function test_calendar_allows_reassigned_workdays_and_blocks_holidays_evenings_and_unknown_years(): void
+    {
+        foreach ([
+            ['2026-08-08 10:00:00', true],
+            ['2026-08-21 10:00:00', false],
+            ['2026-12-12 10:00:00', false],
+            ['2026-12-24 10:00:00', false],
+            ['2026-12-02 18:00:00', false],
+            ['2027-01-04 10:00:00', false],
+        ] as [$at, $allowed]) {
+            [$company, $owner, $invoice, $approval] = $this->approvedDraft(at: $at);
+            $response = $this->actingAs($owner)->post(
+                route('organizations.invoices.reminder-test-delivery', [$company, $invoice]),
+                ['approval_id' => $approval->id],
+            );
+
+            if ($allowed) {
+                $response->assertSessionHasNoErrors();
+            } else {
+                $response->assertSessionHasErrors('delivery');
+            }
+
+            $this->assertSame($allowed, $approval->testDelivery()->exists());
+        }
+    }
+
+    public function test_previous_accepted_and_uncertain_attempts_count_toward_the_seven_day_limit(): void
+    {
+        foreach (['accepted', 'unknown'] as $priorStatus) {
+            [$company, $owner, $invoice, $previous] = $this->approvedDraft(at: '2026-12-02 10:00:00');
+            $previous->testDelivery()->create(['status' => $priorStatus]);
+            $this->travel(6)->days();
+
+            $approval = $previous->replicate();
+            $approval->forceFill(['approved_at' => now(), 'expires_at' => now()->addMinutes(30)])->save();
+            $url = route('organizations.invoices.reminder-test-delivery', [$company, $invoice]);
+
+            $this->actingAs($owner)->post($url, ['approval_id' => $approval->id])->assertSessionHasErrors('delivery');
+            $this->assertFalse($approval->testDelivery()->exists());
+
+            $this->travel(1)->day();
+            $approval->forceFill(['approved_at' => now(), 'expires_at' => now()->addMinutes(30)])->save();
+            $this->post($url, ['approval_id' => $approval->id])->assertSessionHasNoErrors();
+        }
+    }
+
+    /** @return array{Organization, User, Invoice, ReminderApproval} */
+    private function approvedDraft(string $recipient = 'billing@example.test', string $at = '2026-12-02 10:00:00'): array
+    {
+        $this->travelTo(Carbon::parse($at, 'Europe/Budapest'));
         $company = Organization::factory()->create(['reminders_enabled' => true]);
         $owner = User::factory()->create();
         $owner->organizations()->attach($company, ['status' => 'active', 'role' => 'owner']);
@@ -220,7 +304,7 @@ class ReminderTestDeliveryTest extends TestCase
         $invoice = $company->invoices()->create([
             'customer_id' => $customer->id,
             'invoice_number' => '00042',
-            'due_date' => '2026-12-01',
+            'due_date' => now('Europe/Budapest')->subDay()->toDateString(),
             'gross_amount' => 120_000,
         ]);
         $invoice->forceFill([

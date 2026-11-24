@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
+use Illuminate\Database\Eloquent\Builder;
 
 class ReminderTestQueue
 {
@@ -43,6 +44,7 @@ class ReminderTestQueue
             ->update(['status' => Status::Blocked, 'reason' => 'approval_expired']);
 
         ReminderTestDelivery::query()->where('status', Status::Pending)
+            ->where(static fn (Builder $query) => $query->whereNull('available_at')->orWhere('available_at', '<=', now()))
             ->orderBy('id')
             ->eachById(static function (ReminderTestDelivery $delivery): void {
                 SendReminderTest::dispatch($delivery->id)->onQueue(self::NAME);
