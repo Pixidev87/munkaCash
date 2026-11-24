@@ -6,6 +6,7 @@ use App\Enums\ReminderTestDeliveryStatus;
 use App\Http\Requests\Reminders\QueueReminderTestRequest;
 use App\Services\ReminderApprovalStatus;
 use App\Services\ReminderDeliveryControls;
+use App\Services\ReminderDeliveryTiming;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
 use Illuminate\Http\RedirectResponse;
@@ -15,11 +16,11 @@ use Illuminate\Validation\ValidationException;
 
 class ReminderTestDeliveryController extends Controller
 {
-    public function store(QueueReminderTestRequest $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls): RedirectResponse
+    public function store(QueueReminderTestRequest $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls, ReminderDeliveryTiming $timing): RedirectResponse
     {
         $user = $request->user();
 
-        DB::transaction(function () use ($request, $user, $organization, $invoice, $preview, $status, $mailer, $controls): void {
+        DB::transaction(function () use ($request, $user, $organization, $invoice, $preview, $status, $mailer, $controls, $timing): void {
             $company = $user->activeOrganizations()->lockForUpdate()->findOrFail($organization);
             $selected = $company->invoices()->lockForUpdate()->findOrFail($invoice);
             Gate::forUser($user)->authorize('approveReminder', $company);
@@ -46,7 +47,23 @@ class ReminderTestDeliveryController extends Controller
                 throw ValidationException::withMessages(['delivery' => 'A tesztküldéshez .test végződésű cím szükséges.']);
             }
 
-            $approval->testDelivery()->firstOrCreate([], ['status' => ReminderTestDeliveryStatus::Pending]);
+            if ($approval->testDelivery()->exists()) {
+                return;
+            }
+
+            $schedule = $timing->schedule($selected, $approval);
+            if ($schedule['at'] === null) {
+                throw ValidationException::withMessages(['delivery' => match ($schedule['reason']) {
+                    'cooldown' => 'A számlához a legutóbbi küldési kísérlettől számítva hét napnak kell eltelnie.',
+                    'calendar_unavailable' => 'Ehhez az évhez még nincs ellenőrzött munkanaptár.',
+                    default => 'A következő küldési ablak a jóváhagyás lejárta után nyílik.',
+                }]);
+            }
+
+            $approval->testDelivery()->create([
+                'status' => ReminderTestDeliveryStatus::Pending,
+                'available_at' => $schedule['at'],
+            ]);
         }, attempts: 3);
 
         return to_route('organizations.invoices.reminder-preview', [$organization, $invoice]);

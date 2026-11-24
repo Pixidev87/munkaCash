@@ -9,9 +9,11 @@ use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
 use App\Services\ReminderApprovalStatus;
 use App\Services\ReminderDeliveryControls;
+use App\Services\ReminderDeliveryTiming;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -26,10 +28,11 @@ class SendReminderTest implements ShouldQueue
 
     public function __construct(public readonly string $deliveryId) {}
 
-    public function handle(ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls): void
+    public function handle(ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer, ReminderDeliveryControls $controls, ReminderDeliveryTiming $timing): void
     {
         $claimed = ReminderTestDelivery::query()->whereKey($this->deliveryId)
             ->where('status', Status::Pending)
+            ->where(static fn (Builder $query) => $query->whereNull('available_at')->orWhere('available_at', '<=', now()))
             ->update(['status' => Status::Sending]);
 
         if ($claimed === 0) {
@@ -46,7 +49,7 @@ class SendReminderTest implements ShouldQueue
                 return;
             }
 
-            DB::transaction(function () use ($originalInvoice, $preview, $status, $mailer, $controls): void {
+            DB::transaction(function () use ($originalInvoice, $preview, $status, $mailer, $controls, $timing): void {
                 $company = Organization::query()->lockForUpdate()->find($originalInvoice->organization_id);
                 $invoice = $company?->invoices()->lockForUpdate()->find($originalInvoice->id);
                 $customer = $invoice === null ? null : $company->customers()->lockForUpdate()->find($invoice->customer_id);
@@ -74,6 +77,19 @@ class SendReminderTest implements ShouldQueue
                 $approvalStatus = $status->evaluate($company, $approval, $draft['fingerprint']);
                 if ($approvalStatus !== 'active' || $draft['message'] === null) {
                     $this->finish(Status::Blocked, $approvalStatus === 'expired' ? 'approval_expired' : 'approval_changed');
+
+                    return;
+                }
+
+                $schedule = $timing->schedule($invoice, $approval);
+                if ($schedule['at'] === null) {
+                    $this->finish(Status::Blocked, $schedule['reason']);
+
+                    return;
+                }
+
+                if ($schedule['at']->gt(now())) {
+                    $delivery->forceFill(['status' => Status::Pending, 'available_at' => $schedule['at']])->save();
 
                     return;
                 }
