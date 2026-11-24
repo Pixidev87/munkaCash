@@ -1,36 +1,61 @@
-import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { Head, Link } from '@inertiajs/react';
+import { ChevronRight } from 'lucide-react';
 import { dashboard } from '@/routes';
+import { show } from '@/routes/organizations';
 
-export default function Dashboard() {
+type Organization = {
+    id: string;
+    name: string;
+};
+
+export default function Dashboard({
+    organizations,
+}: {
+    organizations: Organization[];
+}) {
     return (
-        <>
-            <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                </div>
-            </div>
-        </>
+        <div className="flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
+            <Head title="Cégeim" />
+            <header>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                    Cégeim
+                </h1>
+                {organizations.length > 0 && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Válaszd ki, melyik céggel szeretnél dolgozni.
+                    </p>
+                )}
+            </header>
+
+            {organizations.length > 0 ? (
+                <ul className="divide-y overflow-hidden rounded-xl border">
+                    {organizations.map((organization) => (
+                        <li key={organization.id}>
+                            <Link
+                                href={show(organization.id)}
+                                className="flex min-h-12 items-center justify-between gap-4 px-4 py-3 font-medium hover:bg-muted focus-visible:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                            >
+                                <span className="min-w-0 wrap-break-word">
+                                    {organization.name}
+                                </span>
+                                <ChevronRight
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-muted-foreground"
+                                />
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p className="rounded-xl border p-4 text-sm text-muted-foreground">
+                    Jelenleg nincs aktív céges tagságod. Ha hozzáférésre van
+                    szükséged, keresd a cég tulajdonosát.
+                </p>
+            )}
+        </div>
     );
 }
 
 Dashboard.layout = {
-    breadcrumbs: [
-        {
-            title: 'Dashboard',
-            href: dashboard(),
-        },
-    ],
+    breadcrumbs: [{ title: 'Cégeim', href: dashboard() }],
 };
