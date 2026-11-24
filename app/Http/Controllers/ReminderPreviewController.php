@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\ReminderApprovalStatus;
 use App\Services\ReminderPreview;
+use App\Services\ReminderTestMailer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,14 +17,15 @@ class ReminderPreviewController extends Controller
 {
     private const int APPROVAL_MINUTES = 30;
 
-    public function show(Request $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status): Response
+    public function show(Request $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status, ReminderTestMailer $mailer): Response
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
         $selected = $company->invoices()->with('customer')->findOrFail($invoice);
         $draft = $preview->prepare($company, $selected);
-        $latest = $selected->reminderApprovals()->with('approver')->latest('id')->first();
+        $latest = $selected->reminderApprovals()->with(['approver', 'testDelivery'])->latest('id')->first();
         $canApprove = $user->can('approveReminder', $company);
+        $delivery = $latest?->testDelivery;
 
         return Inertia::render('organizations/reminder-preview', [
             'organizationId' => (string) $company->id,
@@ -39,6 +41,12 @@ class ReminderPreviewController extends Controller
             'canApprove' => $canApprove,
             'fingerprint' => $canApprove ? $draft['fingerprint'] : null,
             'approvalMinutes' => self::APPROVAL_MINUTES,
+            'testDeliveryEnabled' => $mailer->enabled(),
+            'testRecipient' => $draft['message'] !== null && $mailer->accepts($draft['message']['recipient']),
+            'testDelivery' => $delivery === null ? null : [
+                'status' => $delivery->status->value,
+                'reason' => $delivery->reason,
+            ],
             'approval' => $latest === null ? null : [
                 'id' => (string) $latest->id,
                 'status' => $status->evaluate($company, $latest, $draft['fingerprint']),

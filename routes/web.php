@@ -6,6 +6,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ReminderPreviewController;
+use App\Http\Controllers\ReminderTestDeliveryController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -34,6 +35,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('invoices/{invoice}/reminder-approval', [ReminderPreviewController::class, 'approve'])
                 ->whereNumber('invoice')
                 ->name('invoices.reminder-approval');
+            Route::post('invoices/{invoice}/reminder-test-delivery', [ReminderTestDeliveryController::class, 'store'])
+                ->whereNumber('invoice')
+                ->name('invoices.reminder-test-delivery');
             Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
             Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
             Route::prefix('invoice-imports')->name('invoice-imports.')->group(function () {

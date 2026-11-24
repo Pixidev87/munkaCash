@@ -37,6 +37,13 @@ return [
 
     'mailers' => [
 
+        'reminder-test' => [
+            'transport' => 'smtp',
+            'host' => 'mailpit',
+            'port' => 1025,
+            'timeout' => 5,
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),

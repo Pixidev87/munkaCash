@@ -2,6 +2,7 @@
 
 use App\Models\InvoiceImport;
 use App\Models\ReminderApproval;
+use App\Services\ReminderTestQueue;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -13,3 +14,8 @@ Artisan::command('inspire', function () {
 Schedule::command('model:prune', ['--model' => [InvoiceImport::class]])->everyTenMinutes();
 
 Schedule::command('model:prune', ['--model' => [ReminderApproval::class]])->daily();
+
+Schedule::call(fn () => app(ReminderTestQueue::class)->dispatchPending())
+    ->name('reminder-test-delivery')
+    ->environments(['local', 'testing'])
+    ->everyMinute();
