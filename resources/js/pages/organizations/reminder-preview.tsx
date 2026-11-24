@@ -1,8 +1,12 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { edit } from '@/routes/organizations/customers/billing-contact';
-import { index, reminderApproval } from '@/routes/organizations/invoices';
+import {
+    index,
+    reminderApproval,
+    reminderTestDelivery,
+} from '@/routes/organizations/invoices';
 
 type Props = {
     organizationId: string;
@@ -18,6 +22,12 @@ type Props = {
     canApprove: boolean;
     fingerprint: string | null;
     approvalMinutes: number;
+    testDeliveryEnabled: boolean;
+    testRecipient: boolean;
+    testDelivery: {
+        status: keyof typeof deliveryLabels;
+        reason: string | null;
+    } | null;
     approval: {
         id: string;
         status: 'active' | 'expired' | 'invalidated';
@@ -44,6 +54,23 @@ const approvalLabels = {
     invalidated: 'A korábbi jóváhagyás érvénytelen',
 };
 
+const deliveryLabels = {
+    pending: 'Tesztlevél sorban áll',
+    sending: 'Tesztküldés folyamatban',
+    accepted: 'A Mailpit átvette a tesztlevelet',
+    blocked: 'Tesztküldés letiltva',
+    unknown: 'A tesztlevél átvétele bizonytalan',
+};
+
+const deliveryReasons: Record<string, string> = {
+    missing_record: 'A számla vagy a jóváhagyás már nem érhető el.',
+    approval_expired:
+        'A jóváhagyás lejárt, mielőtt a feldolgozó elindult volna.',
+    approval_changed: 'A levéltervezet vagy a jóváhagyás közben megváltozott.',
+    test_address_required: 'A tesztküldéshez .test végződésű cím szükséges.',
+    transport_unconfirmed: 'Ellenőrizd a Mailpit beérkező leveleit.',
+};
+
 export default function ReminderPreviewPage({
     organizationId,
     customerId,
@@ -58,6 +85,9 @@ export default function ReminderPreviewPage({
     canApprove,
     fingerprint,
     approvalMinutes,
+    testDeliveryEnabled,
+    testRecipient,
+    testDelivery,
     approval,
 }: Props) {
     return (
@@ -73,9 +103,11 @@ export default function ReminderPreviewPage({
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Emlékeztető előnézete
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                    A küldés még nem elérhető.
-                </p>
+                {testDeliveryEnabled && (
+                    <p className="text-sm text-muted-foreground">
+                        A tesztküldés a fejlesztői Mailpit postafiókba érkezik.
+                    </p>
+                )}
             </header>
 
             <dl className="grid gap-3 rounded-xl border p-4 text-sm sm:grid-cols-2">
@@ -224,6 +256,69 @@ export default function ReminderPreviewPage({
                     )}
                 </Form>
             )}
+
+            {testDelivery && (
+                <section
+                    className="space-y-2 rounded-xl border p-4"
+                    aria-label="Tesztküldés állapota"
+                >
+                    <h2 className="font-semibold">
+                        {deliveryLabels[testDelivery.status]}
+                    </h2>
+                    {testDelivery.reason && (
+                        <p className="text-sm text-muted-foreground">
+                            {deliveryReasons[testDelivery.reason]}
+                        </p>
+                    )}
+                    {(testDelivery.status === 'pending' ||
+                        testDelivery.status === 'sending') && (
+                        <Button
+                            variant="outline"
+                            onClick={() => router.reload()}
+                        >
+                            Állapot frissítése
+                        </Button>
+                    )}
+                </section>
+            )}
+
+            {testDeliveryEnabled &&
+                canApprove &&
+                approval?.status === 'active' &&
+                !testDelivery &&
+                (testRecipient ? (
+                    <Form
+                        {...reminderTestDelivery.form({
+                            organization: organizationId,
+                            invoice: invoiceId,
+                        })}
+                        className="space-y-2"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <input
+                                    type="hidden"
+                                    name="approval_id"
+                                    value={approval.id}
+                                />
+                                <Button type="submit" disabled={processing}>
+                                    Tesztlevél sorba állítása
+                                </Button>
+                                <InputError
+                                    message={
+                                        errors.delivery ?? errors.approval_id
+                                    }
+                                    role="alert"
+                                />
+                            </>
+                        )}
+                    </Form>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        A tesztküldéshez .test végződésű pénzügyi e-mail-címet
+                        erősíts meg.
+                    </p>
+                ))}
 
             {message && !canApprove && (
                 <p className="text-sm text-muted-foreground">

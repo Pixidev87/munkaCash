@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $customer_id
+ * @property int $organization_id
  * @property string $currency
  * @property string $invoice_number
  * @property Carbon $due_date
