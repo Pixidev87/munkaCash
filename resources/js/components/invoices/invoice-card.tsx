@@ -1,8 +1,9 @@
-import { Form } from '@inertiajs/react';
+import { Form, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { reminderPreview } from '@/routes/organizations/invoices';
 import { update } from '@/routes/organizations/invoices/balance';
 
 const statusLabels = {
@@ -139,6 +140,16 @@ export default function InvoiceCard({
                     </>
                 )}
             </Form>
+            <Button asChild variant="outline">
+                <Link
+                    href={reminderPreview({
+                        organization: organizationId,
+                        invoice: invoice.id,
+                    })}
+                >
+                    Emlékeztető előnézete
+                </Link>
+            </Button>
             {invoice.checkedAt && (
                 <p className="text-sm text-muted-foreground">
                     Kézzel ellenőrizve{' '}

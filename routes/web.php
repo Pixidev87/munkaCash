@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\BillingContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ReminderPreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -20,6 +22,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organizations.')
         ->group(function () {
             Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+            Route::prefix('customers/{customer}/billing-contact')->whereNumber('customer')
+                ->name('customers.billing-contact.')->group(function () {
+                    Route::get('/', [BillingContactController::class, 'edit'])->name('edit');
+                    Route::patch('/', [BillingContactController::class, 'update'])->name('update');
+                    Route::post('confirm', [BillingContactController::class, 'confirm'])->name('confirm');
+                });
+            Route::get('invoices/{invoice}/reminder-preview', ReminderPreviewController::class)
+                ->whereNumber('invoice')
+                ->name('invoices.reminder-preview');
             Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
             Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
             Route::prefix('invoice-imports')->name('invoice-imports.')->group(function () {
