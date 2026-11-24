@@ -71,7 +71,7 @@ class InvoiceController extends Controller
             $company->invoices()->create($data);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([
-                'invoice_number' => 'Ezzel a számlaszámmal már létezik kézzel rögzített számla ennél a cégnél.',
+                'invoice_number' => 'Ezzel a számlaszámmal már létezik számla ennél a cégnél.',
             ])->errorBag('invoice');
         }
 

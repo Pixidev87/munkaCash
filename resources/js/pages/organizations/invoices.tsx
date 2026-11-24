@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
+import { create as createImport } from '@/routes/organizations/invoice-imports';
 import { store as storeCustomer } from '@/routes/organizations/customers';
 import { store as storeInvoice } from '@/routes/organizations/invoices';
 
@@ -40,6 +41,9 @@ export default function InvoicesPage({
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Számlák
                 </h1>
+                <Button asChild variant="outline">
+                    <Link href={createImport(organization.id)}>CSV-import</Link>
+                </Button>
             </header>
 
             <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
