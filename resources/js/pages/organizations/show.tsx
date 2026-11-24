@@ -4,6 +4,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import { reminderDeliverySettings } from '@/routes/organizations';
+import { customers, invoices } from '@/routes/organizations/exports';
 import { index } from '@/routes/organizations/invoices';
 import { index as deliveryLog } from '@/routes/organizations/reminder-deliveries';
 
@@ -12,11 +13,13 @@ export default function OrganizationPage({
     organizationId,
     remindersEnabled,
     canManageReminders,
+    canExportData,
 }: {
     name: string;
     organizationId: string;
     remindersEnabled: boolean;
     canManageReminders: boolean;
+    canExportData: boolean;
 }) {
     return (
         <div className="flex w-full max-w-3xl flex-col items-start gap-4 p-4 sm:p-6">
@@ -82,6 +85,28 @@ export default function OrganizationPage({
                     </>
                 )}
             </section>
+            {canExportData && (
+                <section className="w-full space-y-3 rounded-xl border p-4">
+                    <h2 className="font-semibold">Céges adatok exportálása</h2>
+                    <p className="text-sm text-muted-foreground">
+                        A számlákat és ügyfeleket a customer_id oszlop kapcsolja
+                        össze. Táblázatkezelőben a számlaszámot szövegként
+                        importáld, hogy a kezdő nullák megmaradjanak.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <a href={customers(organizationId).url} download>
+                                Ügyfelek letöltése (CSV)
+                            </a>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <a href={invoices(organizationId).url} download>
+                                Számlák letöltése (CSV)
+                            </a>
+                        </Button>
+                    </div>
+                </section>
+            )}
         </div>
     );
 }
