@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property bool $reminders_enabled
  * @property string $name
+ * @property Carbon|null $closeout_started_at
+ * @property Carbon|null $export_until
  */
 #[Fillable(['name'])]
 class Organization extends Model
@@ -22,7 +25,21 @@ class Organization extends Model
 
     protected function casts(): array
     {
-        return ['reminders_enabled' => 'boolean'];
+        return [
+            'reminders_enabled' => 'boolean',
+            'closeout_started_at' => 'datetime',
+            'export_until' => 'datetime',
+        ];
+    }
+
+    public function isClosing(): bool
+    {
+        return $this->closeout_started_at !== null;
+    }
+
+    public function exportAvailable(): bool
+    {
+        return ! $this->isClosing() || $this->export_until?->isFuture() === true;
     }
 
     /** @return BelongsToMany<User, $this> */

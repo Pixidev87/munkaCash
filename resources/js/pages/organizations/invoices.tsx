@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import InvoiceCard, { type Invoice } from '@/components/invoices/invoice-card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,9 @@ export default function InvoicesPage({
     selectedCustomerId,
     invoices,
 }: Props) {
+    const { organizationReadOnly } = usePage<{
+        organizationReadOnly: boolean;
+    }>().props;
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
             <Head title={`Számlák · ${organization.name}`} />
@@ -41,146 +44,167 @@ export default function InvoicesPage({
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Számlák
                 </h1>
-                <Button asChild variant="outline">
-                    <Link href={createImport(organization.id)}>CSV-import</Link>
-                </Button>
+                {organizationReadOnly ? (
+                    <p className="text-sm text-muted-foreground">
+                        A cég adatai írásvédettek.
+                    </p>
+                ) : (
+                    <Button asChild variant="outline">
+                        <Link href={createImport(organization.id)}>
+                            CSV-import
+                        </Link>
+                    </Button>
+                )}
             </header>
 
-            <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                <Form
-                    {...storeCustomer.form(organization.id)}
-                    errorBag="customer"
-                    resetOnSuccess
-                    className="space-y-3 rounded-xl border p-4"
-                >
-                    {({ errors, processing }) => (
-                        <>
-                            <h2 className="font-semibold">Új ügyfél</h2>
-                            <div className="space-y-2">
-                                <Label htmlFor="customer-name">
-                                    Ügyfél neve
-                                </Label>
-                                <Input
-                                    id="customer-name"
-                                    name="display_name"
-                                    maxLength={255}
-                                    required
-                                    aria-invalid={Boolean(errors.display_name)}
-                                />
-                                <InputError message={errors.display_name} />
-                            </div>
-                            <Button disabled={processing} type="submit">
-                                Ügyfél mentése
-                            </Button>
-                        </>
-                    )}
-                </Form>
+            {!organizationReadOnly && (
+                <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                    <Form
+                        {...storeCustomer.form(organization.id)}
+                        errorBag="customer"
+                        resetOnSuccess
+                        className="space-y-3 rounded-xl border p-4"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <h2 className="font-semibold">Új ügyfél</h2>
+                                <div className="space-y-2">
+                                    <Label htmlFor="customer-name">
+                                        Ügyfél neve
+                                    </Label>
+                                    <Input
+                                        id="customer-name"
+                                        name="display_name"
+                                        maxLength={255}
+                                        required
+                                        aria-invalid={Boolean(
+                                            errors.display_name,
+                                        )}
+                                    />
+                                    <InputError message={errors.display_name} />
+                                </div>
+                                <Button disabled={processing} type="submit">
+                                    Ügyfél mentése
+                                </Button>
+                            </>
+                        )}
+                    </Form>
 
-                <Form
-                    key={selectedCustomerId}
-                    {...storeInvoice.form(organization.id)}
-                    errorBag="invoice"
-                    resetOnSuccess
-                    className="space-y-3 rounded-xl border p-4"
-                >
-                    {({ errors, processing }) => (
-                        <>
-                            <h2 className="font-semibold">Új számla</h2>
-                            {customers.length === 0 && (
-                                <p className="text-sm text-muted-foreground">
-                                    A számlához először rögzíts egy ügyfelet.
-                                </p>
-                            )}
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="invoice-customer">
-                                        Ügyfél
-                                    </Label>
-                                    <select
-                                        id="invoice-customer"
-                                        name="customer_id"
-                                        defaultValue={selectedCustomerId}
-                                        required
-                                        disabled={customers.length === 0}
-                                        aria-invalid={Boolean(
-                                            errors.customer_id,
-                                        )}
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="">
-                                            Válassz ügyfelet
-                                        </option>
-                                        {customers.map((customer) => (
-                                            <option
-                                                key={customer.id}
-                                                value={customer.id}
-                                            >
-                                                {customer.name}
+                    <Form
+                        key={selectedCustomerId}
+                        {...storeInvoice.form(organization.id)}
+                        errorBag="invoice"
+                        resetOnSuccess
+                        className="space-y-3 rounded-xl border p-4"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <h2 className="font-semibold">Új számla</h2>
+                                {customers.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        A számlához először rögzíts egy
+                                        ügyfelet.
+                                    </p>
+                                )}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="invoice-customer">
+                                            Ügyfél
+                                        </Label>
+                                        <select
+                                            id="invoice-customer"
+                                            name="customer_id"
+                                            defaultValue={selectedCustomerId}
+                                            required
+                                            disabled={customers.length === 0}
+                                            aria-invalid={Boolean(
+                                                errors.customer_id,
+                                            )}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                Válassz ügyfelet
                                             </option>
-                                        ))}
-                                    </select>
-                                    <InputError message={errors.customer_id} />
+                                            {customers.map((customer) => (
+                                                <option
+                                                    key={customer.id}
+                                                    value={customer.id}
+                                                >
+                                                    {customer.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={errors.customer_id}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="invoice-number">
+                                            Számlaszám
+                                        </Label>
+                                        <Input
+                                            id="invoice-number"
+                                            name="invoice_number"
+                                            maxLength={100}
+                                            required
+                                            aria-invalid={Boolean(
+                                                errors.invoice_number,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.invoice_number}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="due-date">
+                                            Fizetési határidő
+                                        </Label>
+                                        <Input
+                                            id="due-date"
+                                            name="due_date"
+                                            type="date"
+                                            min="1000-01-01"
+                                            max="9999-12-31"
+                                            required
+                                            aria-invalid={Boolean(
+                                                errors.due_date,
+                                            )}
+                                        />
+                                        <InputError message={errors.due_date} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="gross-amount">
+                                            Bruttó összeg (Ft)
+                                        </Label>
+                                        <Input
+                                            id="gross-amount"
+                                            name="gross_amount"
+                                            type="number"
+                                            min={1}
+                                            step={1}
+                                            required
+                                            aria-invalid={Boolean(
+                                                errors.gross_amount,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.gross_amount}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="invoice-number">
-                                        Számlaszám
-                                    </Label>
-                                    <Input
-                                        id="invoice-number"
-                                        name="invoice_number"
-                                        maxLength={100}
-                                        required
-                                        aria-invalid={Boolean(
-                                            errors.invoice_number,
-                                        )}
-                                    />
-                                    <InputError
-                                        message={errors.invoice_number}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="due-date">
-                                        Fizetési határidő
-                                    </Label>
-                                    <Input
-                                        id="due-date"
-                                        name="due_date"
-                                        type="date"
-                                        min="1000-01-01"
-                                        max="9999-12-31"
-                                        required
-                                        aria-invalid={Boolean(errors.due_date)}
-                                    />
-                                    <InputError message={errors.due_date} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="gross-amount">
-                                        Bruttó összeg (Ft)
-                                    </Label>
-                                    <Input
-                                        id="gross-amount"
-                                        name="gross_amount"
-                                        type="number"
-                                        min={1}
-                                        step={1}
-                                        required
-                                        aria-invalid={Boolean(
-                                            errors.gross_amount,
-                                        )}
-                                    />
-                                    <InputError message={errors.gross_amount} />
-                                </div>
-                            </div>
-                            <Button
-                                disabled={processing || customers.length === 0}
-                                type="submit"
-                            >
-                                Számla mentése
-                            </Button>
-                        </>
-                    )}
-                </Form>
-            </section>
+                                <Button
+                                    disabled={
+                                        processing || customers.length === 0
+                                    }
+                                    type="submit"
+                                >
+                                    Számla mentése
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </section>
+            )}
 
             <section className="space-y-3">
                 <h2 className="text-lg font-semibold">Rögzített számlák</h2>
@@ -190,6 +214,7 @@ export default function InvoicesPage({
                             <InvoiceCard
                                 key={invoice.id}
                                 invoice={invoice}
+                                readOnly={organizationReadOnly}
                                 organizationId={organization.id}
                             />
                         ))}

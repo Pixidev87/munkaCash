@@ -3,10 +3,19 @@ import { ArrowLeft } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
-import { reminderDeliverySettings } from '@/routes/organizations';
+import {
+    closeout as startCloseout,
+    reminderDeliverySettings,
+} from '@/routes/organizations';
 import { customers, invoices } from '@/routes/organizations/exports';
 import { index } from '@/routes/organizations/invoices';
 import { index as deliveryLog } from '@/routes/organizations/reminder-deliveries';
+
+const localDate = new Intl.DateTimeFormat('hu-HU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Budapest',
+});
 
 export default function OrganizationPage({
     name,
@@ -14,12 +23,16 @@ export default function OrganizationPage({
     remindersEnabled,
     canManageReminders,
     canExportData,
+    closeout,
+    canStartCloseout,
 }: {
     name: string;
     organizationId: string;
     remindersEnabled: boolean;
     canManageReminders: boolean;
     canExportData: boolean;
+    canStartCloseout: boolean;
+    closeout: { exportUntil: string | null; exportAvailable: boolean } | null;
 }) {
     return (
         <div className="flex w-full max-w-3xl flex-col items-start gap-4 p-4 sm:p-6">
@@ -33,58 +46,90 @@ export default function OrganizationPage({
             <h1 className="w-full text-2xl font-semibold tracking-tight wrap-break-word">
                 {name}
             </h1>
-            <Button asChild>
-                <Link href={index(organizationId)}>Számlák megnyitása</Link>
-            </Button>
-            <section className="w-full space-y-3 rounded-xl border p-4">
-                <h2 className="font-semibold">Fizetési emlékeztetők</h2>
-                <Link
-                    className="inline-block text-sm underline"
-                    href={deliveryLog(organizationId)}
-                >
-                    Tesztküldési napló
-                </Link>
-                <p className="text-sm text-muted-foreground" role="status">
-                    {remindersEnabled
-                        ? 'Küldés engedélyezve'
-                        : 'Küldés szünetel'}
-                </p>
-                {canManageReminders && (
-                    <>
+            {closeout && (
+                <section className="w-full space-y-2 rounded-xl border p-4">
+                    <h2 className="font-semibold">A cég írásvédett</h2>
+                    {closeout.exportAvailable && closeout.exportUntil ? (
                         <p className="text-sm text-muted-foreground">
-                            Szüneteltetéskor leállnak a cég várakozó
-                            tesztküldései.
+                            Letöltési határidő{' '}
+                            <time dateTime={closeout.exportUntil}>
+                                {localDate.format(
+                                    new Date(closeout.exportUntil),
+                                )}
+                            </time>
                         </p>
-                        <Form
-                            {...reminderDeliverySettings.form(organizationId)}
-                            className="space-y-2"
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Az exportálási időszak lejárt.
+                        </p>
+                    )}
+                </section>
+            )}
+            {(!closeout || closeout.exportAvailable) && (
+                <>
+                    <Button asChild>
+                        <Link href={index(organizationId)}>
+                            Számlák megnyitása
+                        </Link>
+                    </Button>
+                    <section className="w-full space-y-3 rounded-xl border p-4">
+                        <h2 className="font-semibold">Fizetési emlékeztetők</h2>
+                        <Link
+                            className="inline-block text-sm underline"
+                            href={deliveryLog(organizationId)}
                         >
-                            {({ errors, processing }) => (
-                                <>
-                                    <input
-                                        type="hidden"
-                                        name="enabled"
-                                        value={remindersEnabled ? '0' : '1'}
-                                    />
-                                    <Button
-                                        type="submit"
-                                        variant="outline"
-                                        disabled={processing}
-                                    >
-                                        {remindersEnabled
-                                            ? 'Küldés szüneteltetése'
-                                            : 'Küldés engedélyezése'}
-                                    </Button>
-                                    <InputError
-                                        message={errors.enabled}
-                                        role="alert"
-                                    />
-                                </>
-                            )}
-                        </Form>
-                    </>
-                )}
-            </section>
+                            Tesztküldési napló
+                        </Link>
+                        <p
+                            className="text-sm text-muted-foreground"
+                            role="status"
+                        >
+                            {remindersEnabled
+                                ? 'Küldés engedélyezve'
+                                : 'Küldés szünetel'}
+                        </p>
+                        {canManageReminders && (
+                            <>
+                                <p className="text-sm text-muted-foreground">
+                                    Szüneteltetéskor leállnak a cég várakozó
+                                    tesztküldései.
+                                </p>
+                                <Form
+                                    {...reminderDeliverySettings.form(
+                                        organizationId,
+                                    )}
+                                    className="space-y-2"
+                                >
+                                    {({ errors, processing }) => (
+                                        <>
+                                            <input
+                                                type="hidden"
+                                                name="enabled"
+                                                value={
+                                                    remindersEnabled ? '0' : '1'
+                                                }
+                                            />
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                disabled={processing}
+                                            >
+                                                {remindersEnabled
+                                                    ? 'Küldés szüneteltetése'
+                                                    : 'Küldés engedélyezése'}
+                                            </Button>
+                                            <InputError
+                                                message={errors.enabled}
+                                                role="alert"
+                                            />
+                                        </>
+                                    )}
+                                </Form>
+                            </>
+                        )}
+                    </section>
+                </>
+            )}
             {canExportData && (
                 <section className="w-full space-y-3 rounded-xl border p-4">
                     <h2 className="font-semibold">Céges adatok exportálása</h2>
@@ -106,6 +151,48 @@ export default function OrganizationPage({
                         </Button>
                     </div>
                 </section>
+            )}
+            {canStartCloseout && (
+                <details className="w-full space-y-3 rounded-xl border p-4">
+                    <summary className="cursor-pointer font-semibold">
+                        Cég lezárása
+                    </summary>
+                    <p className="text-sm text-muted-foreground">
+                        A cég írásvédetté válik, az import és az emlékeztetők
+                        küldése leáll. A tulajdonos 30 napig exportálhatja az
+                        adatokat.
+                    </p>
+                    <Form
+                        {...startCloseout.form(organizationId)}
+                        className="space-y-3"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        name="confirm"
+                                        value="1"
+                                        required
+                                        className="mt-1"
+                                    />
+                                    Megerősítem a cég írásvédetté tételét.
+                                </label>
+                                <InputError
+                                    message={errors.confirm}
+                                    role="alert"
+                                />
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={processing}
+                                >
+                                    Cég írásvédetté tétele
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </details>
             )}
         </div>
     );

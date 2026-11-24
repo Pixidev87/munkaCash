@@ -28,7 +28,11 @@ type Props = {
     fingerprint: string | null;
     approvalMinutes: number;
     testDeliveryEnabled: boolean;
-    deliveryBlocker: 'organization_paused' | 'customer_do_not_contact' | null;
+    deliveryBlocker:
+        | 'organization_closing'
+        | 'organization_paused'
+        | 'customer_do_not_contact'
+        | null;
     testRecipient: boolean;
     lastDeliveryAttemptAt: string | null;
     testDelivery: {
@@ -340,11 +344,13 @@ export default function ReminderPreviewPage({
                     </p>
                 ))}
 
-            {message && !canApprove && (
-                <p className="text-sm text-muted-foreground">
-                    A levéltervezetet a cég tulajdonosa hagyhatja jóvá.
-                </p>
-            )}
+            {message &&
+                !canApprove &&
+                deliveryBlocker !== 'organization_closing' && (
+                    <p className="text-sm text-muted-foreground">
+                        A levéltervezetet a cég tulajdonosa hagyhatja jóvá.
+                    </p>
+                )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,9 @@ export default function InvoiceImportPage({
     maxRows,
     maxSizeKiB,
 }: Props) {
+    const { organizationReadOnly } = usePage<{
+        organizationReadOnly: boolean;
+    }>().props;
     return (
         <div className="w-full max-w-3xl space-y-6 p-4 sm:p-6">
             <Head title="CSV-import" />
@@ -37,44 +40,56 @@ export default function InvoiceImportPage({
                 </p>
             </header>
 
-            <Form
-                {...store.form(organization.id)}
-                className="space-y-4 rounded-xl border p-4"
-            >
-                {({ errors, processing }) => (
-                    <>
-                        <p className="text-sm text-muted-foreground">
-                            UTF-8, pontosvesszővel tagolt CSV. Legfeljebb{' '}
-                            {maxRows} sor és {maxSizeKiB} KiB. A sablon
-                            mintasorában cseréld ki a customer_id mezőt a cég
-                            egy meglévő ügyfelének azonosítójára.
-                        </p>
-                        <Button asChild variant="outline">
-                            <a href={template(organization.id).url} download>
-                                Sablon letöltése
-                            </a>
-                        </Button>
-                        <div className="space-y-2">
-                            <Label htmlFor="csv">CSV-fájl</Label>
-                            <Input
-                                id="csv"
-                                name="csv"
-                                type="file"
-                                accept=".csv,text/csv"
-                                required
-                                aria-describedby={
-                                    errors.csv ? 'csv-error' : undefined
-                                }
-                                aria-invalid={Boolean(errors.csv)}
-                            />
-                            <InputError id="csv-error" message={errors.csv} />
-                        </div>
-                        <Button disabled={processing} type="submit">
-                            Előnézet készítése
-                        </Button>
-                    </>
-                )}
-            </Form>
+            {organizationReadOnly ? (
+                <p className="text-sm text-muted-foreground">
+                    Írásvédett céghez nem indítható új import.
+                </p>
+            ) : (
+                <Form
+                    {...store.form(organization.id)}
+                    className="space-y-4 rounded-xl border p-4"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                UTF-8, pontosvesszővel tagolt CSV. Legfeljebb{' '}
+                                {maxRows} sor és {maxSizeKiB} KiB. A sablon
+                                mintasorában cseréld ki a customer_id mezőt a
+                                cég egy meglévő ügyfelének azonosítójára.
+                            </p>
+                            <Button asChild variant="outline">
+                                <a
+                                    href={template(organization.id).url}
+                                    download
+                                >
+                                    Sablon letöltése
+                                </a>
+                            </Button>
+                            <div className="space-y-2">
+                                <Label htmlFor="csv">CSV-fájl</Label>
+                                <Input
+                                    id="csv"
+                                    name="csv"
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    required
+                                    aria-describedby={
+                                        errors.csv ? 'csv-error' : undefined
+                                    }
+                                    aria-invalid={Boolean(errors.csv)}
+                                />
+                                <InputError
+                                    id="csv-error"
+                                    message={errors.csv}
+                                />
+                            </div>
+                            <Button disabled={processing} type="submit">
+                                Előnézet készítése
+                            </Button>
+                        </>
+                    )}
+                </Form>
+            )}
 
             <section className="space-y-2">
                 <h2 className="font-semibold">Ügyfél-azonosítók</h2>

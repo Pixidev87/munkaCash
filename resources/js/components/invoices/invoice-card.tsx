@@ -40,9 +40,11 @@ const checkedDate = new Intl.DateTimeFormat('hu-HU', {
 export default function InvoiceCard({
     invoice,
     organizationId,
+    readOnly = false,
 }: {
     invoice: Invoice;
     organizationId: string;
+    readOnly?: boolean;
 }) {
     const amountId = `balance-${invoice.id}`;
 
@@ -84,62 +86,64 @@ export default function InvoiceCard({
                 </div>
             </dl>
 
-            <Form
-                {...update.form({
-                    organization: organizationId,
-                    invoice: invoice.id,
-                })}
-                errorBag={amountId}
-                options={{ preserveScroll: true }}
-                className="space-y-1"
-            >
-                {({ errors, processing }) => (
-                    <>
-                        <input
-                            type="hidden"
-                            name="revision"
-                            value={invoice.revision}
-                        />
-                        <Label htmlFor={amountId}>
-                            Ellenőrzött fennálló összeg (Ft)
-                        </Label>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            <Input
-                                id={amountId}
-                                name="outstanding_amount"
-                                type="number"
-                                min={0}
-                                max={invoice.gross}
-                                step={1}
-                                required
-                                defaultValue={invoice.outstanding ?? ''}
-                                aria-invalid={Boolean(
-                                    errors.outstanding_amount,
-                                )}
-                                aria-describedby={
-                                    errors.outstanding_amount
-                                        ? `${amountId}-error`
-                                        : undefined
-                                }
-                                className="w-48 max-w-full"
+            {!readOnly && (
+                <Form
+                    {...update.form({
+                        organization: organizationId,
+                        invoice: invoice.id,
+                    })}
+                    errorBag={amountId}
+                    options={{ preserveScroll: true }}
+                    className="space-y-1"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <input
+                                type="hidden"
+                                name="revision"
+                                value={invoice.revision}
                             />
-                            <Button
-                                disabled={processing}
-                                type="submit"
-                                variant="outline"
-                            >
-                                Egyenleg megerősítése
-                            </Button>
-                        </div>
-                        <InputError
-                            id={`${amountId}-error`}
-                            message={
-                                errors.outstanding_amount ?? errors.revision
-                            }
-                        />
-                    </>
-                )}
-            </Form>
+                            <Label htmlFor={amountId}>
+                                Ellenőrzött fennálló összeg (Ft)
+                            </Label>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                <Input
+                                    id={amountId}
+                                    name="outstanding_amount"
+                                    type="number"
+                                    min={0}
+                                    max={invoice.gross}
+                                    step={1}
+                                    required
+                                    defaultValue={invoice.outstanding ?? ''}
+                                    aria-invalid={Boolean(
+                                        errors.outstanding_amount,
+                                    )}
+                                    aria-describedby={
+                                        errors.outstanding_amount
+                                            ? `${amountId}-error`
+                                            : undefined
+                                    }
+                                    className="w-48 max-w-full"
+                                />
+                                <Button
+                                    disabled={processing}
+                                    type="submit"
+                                    variant="outline"
+                                >
+                                    Egyenleg megerősítése
+                                </Button>
+                            </div>
+                            <InputError
+                                id={`${amountId}-error`}
+                                message={
+                                    errors.outstanding_amount ?? errors.revision
+                                }
+                            />
+                        </>
+                    )}
+                </Form>
+            )}
             <Button asChild variant="outline">
                 <Link
                     href={reminderPreview({

@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,9 @@ export default function BillingContactPage({
     customer,
     canManageReminders,
 }: Props) {
+    const { organizationReadOnly } = usePage<{
+        organizationReadOnly: boolean;
+    }>().props;
     const routeArgs = { organization: organizationId, customer: customer.id };
 
     return (
@@ -48,52 +51,58 @@ export default function BillingContactPage({
                 </p>
             </header>
 
-            <Form
-                {...update.form(routeArgs)}
-                errorBag="address"
-                className="space-y-3 rounded-xl border p-4"
-            >
-                {({ errors, processing }) => (
-                    <>
-                        <input
-                            type="hidden"
-                            name="revision"
-                            value={customer.revision}
-                        />
-                        <div className="space-y-2">
-                            <Label htmlFor="billing-email">
-                                Pénzügyi e-mail-cím
-                            </Label>
-                            <Input
-                                key={customer.billingEmail ?? ''}
-                                id="billing-email"
-                                name="billing_email"
-                                type="email"
-                                maxLength={254}
-                                defaultValue={customer.billingEmail ?? ''}
-                                aria-invalid={Boolean(errors.billing_email)}
-                                aria-describedby="billing-email-help"
+            {organizationReadOnly ? (
+                <p className="text-sm text-muted-foreground">
+                    A cég adatai írásvédettek.
+                </p>
+            ) : (
+                <Form
+                    {...update.form(routeArgs)}
+                    errorBag="address"
+                    className="space-y-3 rounded-xl border p-4"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <input
+                                type="hidden"
+                                name="revision"
+                                value={customer.revision}
                             />
-                            <p
-                                id="billing-email-help"
-                                className="text-sm text-muted-foreground"
-                            >
-                                Címváltozás után új megerősítés szükséges.
-                                Üresen mentve eltávolítod a címet.
-                            </p>
-                            <InputError
-                                message={
-                                    errors.billing_email ?? errors.revision
-                                }
-                                role="alert"
-                            />
-                        </div>
-                        <Button type="submit" disabled={processing}>
-                            Cím mentése
-                        </Button>
-                    </>
-                )}
-            </Form>
+                            <div className="space-y-2">
+                                <Label htmlFor="billing-email">
+                                    Pénzügyi e-mail-cím
+                                </Label>
+                                <Input
+                                    key={customer.billingEmail ?? ''}
+                                    id="billing-email"
+                                    name="billing_email"
+                                    type="email"
+                                    maxLength={254}
+                                    defaultValue={customer.billingEmail ?? ''}
+                                    aria-invalid={Boolean(errors.billing_email)}
+                                    aria-describedby="billing-email-help"
+                                />
+                                <p
+                                    id="billing-email-help"
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    Címváltozás után új megerősítés szükséges.
+                                    Üresen mentve eltávolítod a címet.
+                                </p>
+                                <InputError
+                                    message={
+                                        errors.billing_email ?? errors.revision
+                                    }
+                                    role="alert"
+                                />
+                            </div>
+                            <Button type="submit" disabled={processing}>
+                                Cím mentése
+                            </Button>
+                        </>
+                    )}
+                </Form>
+            )}
 
             {customer.billingEmail && (
                 <section className="space-y-3 rounded-xl border p-4">
@@ -104,7 +113,7 @@ export default function BillingContactPage({
                             ? 'Megerősítve'
                             : 'Megerősítésre vár'}
                     </p>
-                    {!customer.confirmed && (
+                    {!organizationReadOnly && !customer.confirmed && (
                         <Form
                             {...confirm.form(routeArgs)}
                             errorBag="confirmation"

@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { confirm, create } from '@/routes/organizations/invoice-imports';
@@ -44,6 +44,9 @@ export default function InvoiceImportPreview({
     canImport,
     summary,
 }: Props) {
+    const { organizationReadOnly } = usePage<{
+        organizationReadOnly: boolean;
+    }>().props;
     const title = summary ? 'Import eredménye' : 'Import előnézete';
 
     return (
@@ -86,12 +89,18 @@ export default function InvoiceImportPreview({
                         {({ errors, processing }) => (
                             <>
                                 <p className="text-sm text-muted-foreground">
-                                    {canImport
-                                        ? 'Az új számlák egyenlege az első ellenőrzésig ismeretlen.'
-                                        : 'A hibás és ütköző sorok az egész importot blokkolják. Javítsd a fájlt, majd töltsd fel újra.'}
+                                    {organizationReadOnly
+                                        ? 'Az írásvédett céghez az import nem erősíthető meg.'
+                                        : canImport
+                                          ? 'Az új számlák egyenlege az első ellenőrzésig ismeretlen.'
+                                          : 'A hibás és ütköző sorok az egész importot blokkolják. Javítsd a fájlt, majd töltsd fel újra.'}
                                 </p>
                                 <Button
-                                    disabled={!canImport || processing}
+                                    disabled={
+                                        organizationReadOnly ||
+                                        !canImport ||
+                                        processing
+                                    }
                                     type="submit"
                                 >
                                     Import megerősítése
