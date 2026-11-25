@@ -21,6 +21,7 @@ export const deliveryReasons: Record<string, string> = {
     outside_window: 'A jóváhagyás érvényessége alatt nincs küldési ablak.',
     calendar_unavailable: 'Ehhez az évhez még nincs ellenőrzött munkanaptár.',
     missing_record: 'A számla vagy a jóváhagyás már nem érhető el.',
+    approval_revoked: 'A tulajdonos visszavonta a jóváhagyást.',
     approval_expired:
         'A jóváhagyás lejárt, mielőtt a feldolgozó elindult volna.',
     approval_changed: 'A levéltervezet vagy a jóváhagyás közben megváltozott.',

@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int $invoice_id
  * @property string $fingerprint
  * @property Carbon $approved_at
+ * @property Carbon|null $revoked_at
  * @property Carbon $expires_at
  * @property-read User|null $approver
  * @property-read ReminderTestDelivery|null $testDelivery
@@ -31,6 +32,7 @@ class ReminderApproval extends Model
         return [
             'approved_at' => 'datetime',
             'expires_at' => 'datetime',
+            'revoked_at' => 'datetime',
         ];
     }
 

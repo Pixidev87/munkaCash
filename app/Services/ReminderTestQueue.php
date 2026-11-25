@@ -30,6 +30,12 @@ class ReminderTestQueue
         $this->blockPendingForInvoices(Invoice::query()->whereKey($invoice->id)->select('id'), $reason);
     }
 
+    public function blockPendingForApproval(ReminderApproval $approval, string $reason): bool
+    {
+        return $approval->testDelivery()->where('status', Status::Pending)
+            ->update(['status' => Status::Blocked, 'reason' => $reason]) === 1;
+    }
+
     /** @param Builder<Invoice> $invoices */
     private function blockPendingForInvoices(Builder $invoices, string $reason): void
     {
