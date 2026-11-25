@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\InvoiceCsvParser;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\MassPrunable;
@@ -32,6 +33,15 @@ class InvoiceImport extends Model
             'unchanged_count' => 'integer',
             'expires_at' => 'datetime',
         ];
+    }
+
+    /** @param Builder<InvoiceImport> $query */
+    #[Scope]
+    protected function availableTo(Builder $query, int $organizationId, int $userId): void
+    {
+        $query->where('organization_id', $organizationId)
+            ->where('user_id', $userId)
+            ->where('expires_at', '>', now());
     }
 
     /** @return Builder<static> */
