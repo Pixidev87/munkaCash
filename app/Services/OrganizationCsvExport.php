@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Organization;
+use App\Models\ReminderTestDelivery;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -35,6 +36,30 @@ class OrganizationCsvExport
     public function filteredInvoices(Organization $organization, Builder $matching): StreamedResponse
     {
         return $this->invoiceRows($matching, 'munkacash-szurt-szamlak-'.$organization->id.'.csv');
+    }
+
+    /** @param  Builder<ReminderTestDelivery>  $matching */
+    public function reminderDeliveries(Organization $organization, Builder $matching): StreamedResponse
+    {
+        $rows = $matching
+            ->select([
+                'reminder_test_deliveries.id', 'reminder_approvals.invoice_number',
+                'reminder_test_deliveries.status', 'reminder_test_deliveries.reason',
+                'reminder_test_deliveries.created_at', 'reminder_test_deliveries.available_at', 'reminder_test_deliveries.updated_at',
+            ])
+            ->lazyById(1000, 'reminder_test_deliveries.id', 'id')
+            ->map(static fn (ReminderTestDelivery $delivery): array => [
+                (string) $delivery->getAttribute('invoice_number'),
+                $delivery->status->value,
+                $delivery->reason,
+                $delivery->created_at->toISOString(),
+                $delivery->available_at?->toISOString(),
+                $delivery->updated_at->toISOString(),
+            ]);
+
+        return SpreadsheetCsv::download('munkacash-tesztkuldesek-'.$organization->id.'.csv', [
+            'invoice_number', 'status', 'reason', 'queued_at_utc', 'available_at_utc', 'updated_at_utc',
+        ], $rows);
     }
 
     /** @param  Builder<Invoice>  $invoices */

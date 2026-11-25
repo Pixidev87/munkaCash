@@ -8,6 +8,7 @@ const actions = {
     invitation_cancelled: 'Meghívó visszavonása',
     customers_export: 'Ügyfelek CSV-exportjának kérése',
     invoices_export: 'Teljes számlaexport kérése',
+    reminder_delivery_export: 'Tesztküldési napló exportjának kérése',
     filtered_invoices_export: 'Szűrt számlaexport kérése',
     member_revoked: 'Munkatársi hozzáférés visszavonása',
 };

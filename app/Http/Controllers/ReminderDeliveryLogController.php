@@ -46,6 +46,9 @@ class ReminderDeliveryLogController extends Controller
                 'queuedFrom' => $filters['queued_from'] ?? null,
                 'queuedTo' => $filters['queued_to'] ?? null,
             ],
+            'exportUrl' => $request->user()->can('exportData', $company)
+                ? route('organizations.exports.reminder-deliveries', ['organization' => $company->id, ...$filters], absolute: false)
+                : null,
             'totals' => $totals,
             'deliveries' => $deliveries,
         ]);
