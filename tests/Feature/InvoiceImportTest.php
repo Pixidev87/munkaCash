@@ -299,7 +299,12 @@ class InvoiceImportTest extends TestCase
             ->where('expiresAt', now()->addMinutes(30)->toISOString()));
         $this->confirm($company, $batch)->assertSessionHasNoErrors();
         $this->get($page)->assertInertia(fn (Assert $page) => $page
-            ->where('expiresAt', now()->addDays(30)->toISOString()));
+            ->where('expiresAt', now()->addDays(30)->toISOString())
+            ->where('summary.confirmedAt', now()->toISOString()));
+        $confirmedAt = now()->toISOString();
+        $this->travel(1)->minute();
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+        $this->get($page)->assertInertia(fn (Assert $page) => $page->where('summary.confirmedAt', $confirmedAt));
     }
 
     public function test_imported_invoices_appear_in_the_csv_balance_review_list_until_checked(): void

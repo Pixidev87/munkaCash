@@ -144,6 +144,7 @@ class InvoiceImportController extends Controller
             ],
             'canImport' => $service->canImport($rows),
             'summary' => $batch->rows === null ? [
+                'confirmedAt' => $batch->confirmed_at?->toISOString(),
                 'hasTrackedInvoices' => $company->invoices()->where('invoice_import_id', $batch->id)->exists(),
                 'created' => $batch->created_count,
                 'unchanged' => $batch->unchanged_count,
@@ -186,10 +187,12 @@ class InvoiceImportController extends Controller
                     throw ValidationException::withMessages(['import' => 'Az import hibás vagy ütköző sorokat tartalmaz. Javítsd a fájlt, majd töltsd fel újra.']);
                 }
 
+                $confirmedAt = now()->toImmutable();
                 $batch->update([
                     ...$service->import($company, $batch, $rows),
                     'rows' => null,
-                    'expires_at' => now()->addDays(30),
+                    'confirmed_at' => $confirmedAt,
+                    'expires_at' => $confirmedAt->addDays(30),
                 ]);
             }, attempts: 3);
         } catch (UniqueConstraintViolationException) {
