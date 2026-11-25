@@ -122,6 +122,43 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertDatabaseCount('reminder_test_deliveries', 0);
     }
 
+    public function test_resetting_a_balance_blocks_waiting_delivery_and_requires_a_new_approval(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        [, , , $otherApproval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        $otherDelivery = $otherApproval->testDelivery()->create(['status' => 'pending']);
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active', 'role' => 'member']);
+        $reset = route('organizations.invoices.balance.destroy', [$company, $invoice]);
+        $preview = route('organizations.invoices.reminder-preview', [$company, $invoice]);
+
+        $this->actingAs($member)->delete($reset, ['confirm' => true, 'revision' => 0])->assertSessionHasNoErrors();
+        $this->delete($reset, ['confirm' => true, 'revision' => 1])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id, 'gross_amount' => 120_000, 'status' => 'unchecked',
+            'outstanding_amount' => null, 'status_checked_at' => null, 'checked_by' => null, 'status_source' => null,
+            'revision' => 1,
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'balance_unverified',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'pending']);
+
+        $this->actingAs($owner)->get($preview)->assertInertia(fn (Assert $page) => $page
+            ->where('outstanding', null)
+            ->where('approval.status', 'invalidated')
+            ->where('message', null));
+        $this->patch(route('organizations.invoices.balance.update', [$company, $invoice]), [
+            'outstanding_amount' => 80_000,
+            'revision' => 1,
+        ])->assertSessionHasNoErrors();
+        $this->get($preview)->assertInertia(fn (Assert $page) => $page
+            ->where('outstanding', 80_000)
+            ->where('approval.status', 'invalidated'));
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'blocked']);
+    }
+
     public function test_company_pause_blocks_its_queued_delivery_and_resuming_does_not_requeue_it(): void
     {
         [$company, $owner, $invoice, $approval] = $this->approvedDraft();

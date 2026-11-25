@@ -9,6 +9,7 @@ export const deliveryLabels = {
 export const deliveryReasons: Record<string, string> = {
     organization_closing: 'A cég írásvédett állapotban van.',
     organization_paused: 'A cég emlékeztetői szünetelnek.',
+    balance_unverified: 'A számla fennálló összege új ellenőrzést igényel.',
     invoice_disputed: 'A számla vitatott.',
     customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
     cooldown:
