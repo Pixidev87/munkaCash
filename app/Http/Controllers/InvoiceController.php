@@ -6,6 +6,7 @@ use App\Enums\InvoiceSource;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\FilterInvoicesRequest;
 use App\Http\Requests\Invoices\ResetInvoiceBalanceRequest;
+use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -15,7 +16,6 @@ use App\Services\ReminderTestQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -78,23 +78,11 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $organization): RedirectResponse
+    public function store(StoreInvoiceRequest $request, string $organization): RedirectResponse
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $data = $request->validateWithBag('invoice', [
-            'customer_id' => ['required', 'integer', Rule::exists('customers', 'id')->where('organization_id', $company->id)],
-            'invoice_number' => ['required', 'string', 'max:100'],
-            'due_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before_or_equal:9999-12-31'],
-            'gross_amount' => ['required', 'integer', 'min:1', 'max:'.Invoice::MAX_GROSS_AMOUNT],
-        ], [
-            'customer_id.*' => 'Válassz ügyfelet a cég ügyfelei közül.',
-            'invoice_number.*' => 'Add meg a számlaszámot, legfeljebb 100 karakterben.',
-            'due_date.*' => 'Adj meg érvényes fizetési határidőt.',
-            'gross_amount.*' => 'Adj meg pozitív egész forintösszeget, legfeljebb 12 számjeggyel.',
-        ]);
-
         try {
-            $company->invoices()->create($data);
+            $company->invoices()->create($request->validated());
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([
                 'invoice_number' => 'Ezzel a számlaszámmal már létezik számla ennél a cégnél.',

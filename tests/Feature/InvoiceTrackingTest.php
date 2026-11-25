@@ -52,6 +52,23 @@ class InvoiceTrackingTest extends TestCase
                 ->where('customers.0.name', 'Minta Ügyfél Kft.'));
     }
 
+    public function test_manual_invoice_validation_keeps_errors_in_the_invoice_form(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $customer = $company->customers()->create(['display_name' => 'Minta Ügyfél']);
+
+        $this->actingAs($member)->post(route('organizations.invoices.store', $company), [
+            'customer_id' => [$customer->id],
+            'invoice_number' => str_repeat('A', 101),
+            'due_date' => '2026-02-30',
+            'gross_amount' => Invoice::MAX_GROSS_AMOUNT + 1,
+        ])->assertSessionHasErrorsIn('invoice', ['customer_id', 'invoice_number', 'due_date', 'gross_amount']);
+
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
     public function test_review_distinguishes_open_partial_and_paid_balances_and_records_the_checker(): void
     {
         $company = Organization::factory()->create();
