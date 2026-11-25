@@ -1,10 +1,10 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
-import { index } from '@/routes/organizations/customers';
+import { index, store } from '@/routes/organizations/customers';
 import { edit } from '@/routes/organizations/customers/billing-contact';
 import { index as invoices } from '@/routes/organizations/invoices';
 
@@ -34,6 +34,9 @@ export default function Customers({
         next_page_url: string | null;
     };
 }) {
+    const { organizationReadOnly } = usePage<{
+        organizationReadOnly: boolean;
+    }>().props;
     const hasFilters =
         filters.name || filters.billingContact || filters.blocked;
 
@@ -47,6 +50,46 @@ export default function Customers({
             <p className="text-sm wrap-break-word text-muted-foreground">
                 {organization.name}
             </p>
+            {!organizationReadOnly && (
+                <details className="space-y-3 rounded-xl border p-4">
+                    <summary className="cursor-pointer font-semibold">
+                        Új ügyfél
+                    </summary>
+                    <Form
+                        {...store.form(organization.id)}
+                        errorBag="customer"
+                        className="space-y-2"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <input
+                                    type="hidden"
+                                    name="origin"
+                                    value="directory"
+                                />
+                                <Label htmlFor="new-customer-name">
+                                    Ügyfél neve
+                                </Label>
+                                <Input
+                                    id="new-customer-name"
+                                    name="display_name"
+                                    maxLength={255}
+                                    required
+                                />
+                                <InputError
+                                    message={
+                                        errors.display_name ?? errors.origin
+                                    }
+                                    role="alert"
+                                />
+                                <Button type="submit" disabled={processing}>
+                                    Ügyfél mentése
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </details>
+            )}
             <Form
                 key={JSON.stringify(filters)}
                 {...index.form(organization.id)}

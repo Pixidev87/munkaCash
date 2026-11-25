@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Customers\FilterCustomersRequest;
+use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,17 +53,14 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $organization): RedirectResponse
+    public function store(StoreCustomerRequest $request, string $organization): RedirectResponse
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $data = $request->validateWithBag('customer', [
-            'display_name' => ['required', 'string', 'max:255'],
-        ], [
-            'display_name.required' => 'Add meg az ügyfél nevét.',
-            'display_name.max' => 'Az ügyfél neve legfeljebb 255 karakter lehet.',
-        ]);
+        $customer = $company->customers()->create($request->safe()->only(['display_name']));
 
-        $customer = $company->customers()->create($data);
+        if ($request->validated('origin') === 'directory') {
+            return to_route('organizations.customers.billing-contact.edit', [$company, $customer]);
+        }
 
         return to_route('organizations.invoices.index', [
             'organization' => $organization,
