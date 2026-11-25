@@ -29,6 +29,8 @@ type Props = {
         status: DeliveryStatus | null;
         invoiceNumber: string | null;
         reason: string | null;
+        queuedFrom: string | null;
+        queuedTo: string | null;
     };
     deliveries: {
         data: Delivery[];
@@ -51,7 +53,9 @@ export default function ReminderDeliveryLog({
     const filtered =
         filters.status !== null ||
         filters.invoiceNumber !== null ||
-        filters.reason !== null;
+        filters.reason !== null ||
+        filters.queuedFrom !== null ||
+        filters.queuedTo !== null;
 
     return (
         <div className="w-full max-w-4xl space-y-6 p-4 sm:p-6">
@@ -140,6 +144,33 @@ export default function ReminderDeliveryLog({
                                 <InputError message={errors.reason} />
                             </div>
                         </div>
+                        <fieldset className="grid gap-3 sm:grid-cols-2">
+                            <legend className="mb-2 text-sm font-medium">
+                                Sorba állítás dátuma (budapesti idő)
+                            </legend>
+                            <div className="space-y-2">
+                                <Label htmlFor="queued-from">
+                                    Ettől a naptól
+                                </Label>
+                                <Input
+                                    id="queued-from"
+                                    name="queued_from"
+                                    type="date"
+                                    defaultValue={filters.queuedFrom ?? ''}
+                                />
+                                <InputError message={errors.queued_from} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="queued-to">Eddig a napig</Label>
+                                <Input
+                                    id="queued-to"
+                                    name="queued_to"
+                                    type="date"
+                                    defaultValue={filters.queuedTo ?? ''}
+                                />
+                                <InputError message={errors.queued_to} />
+                            </div>
+                        </fieldset>
                         <div className="flex flex-wrap gap-2">
                             <Button disabled={processing} type="submit">
                                 Szűrés
