@@ -348,6 +348,24 @@ class InvoiceTrackingTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('due_from');
     }
 
+    public function test_invoice_list_shows_the_calendar_deadline_and_preserves_the_original_date(): void
+    {
+        $company = Organization::factory()->create();
+        $user = User::factory()->create();
+        $user->organizations()->attach($company, ['status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $invoice->forceFill(['due_date' => '2026-12-24'])->save();
+        $other = $invoice->replicate()->forceFill(['invoice_number' => '00043', 'due_date' => '2025-12-18']);
+        $other->save();
+
+        $this->actingAs($user)->get(route('organizations.invoices.index', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('invoices.data.0.dueDate', '2025-12-18')
+                ->where('invoices.data.0.effectiveDueDate', null)
+                ->where('invoices.data.1.dueDate', '2026-12-24')
+                ->where('invoices.data.1.effectiveDueDate', '2026-12-28'));
+    }
+
     public function test_invoice_pagination_preserves_applied_filters(): void
     {
         $company = Organization::factory()->create();
