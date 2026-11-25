@@ -1,6 +1,8 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
+import InputError from '@/components/input-error';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { create, show } from '@/routes/organizations/invoice-imports';
+import { create, index, show } from '@/routes/organizations/invoice-imports';
 
 const localDate = new Intl.DateTimeFormat('hu-HU', {
     dateStyle: 'medium',
@@ -19,8 +21,10 @@ type Import = {
 export default function InvoiceImportHistory({
     organizationId,
     imports,
+    status,
 }: {
     organizationId: string;
+    status: 'pending' | 'completed' | null;
     imports: {
         data: Import[];
         prev_page_url: string | null;
@@ -38,6 +42,48 @@ export default function InvoiceImportHistory({
             <h1 className="text-2xl font-semibold tracking-tight">
                 Importelőzmények
             </h1>
+            <Form
+                {...index.form(organizationId)}
+                key={status ?? ''}
+                className="space-y-3 rounded-xl border p-4"
+            >
+                {({ errors, processing }) => (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="import-status">
+                                Import állapota
+                            </Label>
+                            <select
+                                id="import-status"
+                                name="status"
+                                defaultValue={status ?? ''}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Minden állapot</option>
+                                <option value="pending">
+                                    Megerősítésre vár
+                                </option>
+                                <option value="completed">Lezárt import</option>
+                            </select>
+                            <InputError
+                                message={errors.status ?? errors.page}
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="submit" disabled={processing}>
+                                Szűrés
+                            </Button>
+                            {status && (
+                                <Button asChild variant="outline">
+                                    <Link href={index(organizationId)}>
+                                        Szűrő törlése
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+                    </>
+                )}
+            </Form>
             {imports.data.length ? (
                 <ul className="divide-y rounded-xl border">
                     {imports.data.map((batch) => (
