@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Organizations\FilterAccessLogRequest;
 use App\Models\OrganizationAccessEvent;
+use App\Models\User;
 use App\Services\HungarianWorkCalendar;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -18,9 +19,15 @@ class OrganizationAccessLogController extends Controller
         Gate::authorize('manageMembers', $company);
 
         $filters = $request->criteria();
-        $events = OrganizationAccessEvent::query()
+        $recent = OrganizationAccessEvent::query()
             ->where('organization_id', $company->id)
-            ->where('occurred_at', '>', now()->subDays(OrganizationAccessEvent::RETENTION_DAYS))
+            ->where('occurred_at', '>', now()->subDays(OrganizationAccessEvent::RETENTION_DAYS));
+        $actors = User::query()->whereIn('id', (clone $recent)->select('actor_id'))
+            ->orderBy('name')->orderBy('id')->get(['id', 'name'])
+            ->map(static fn (User $actor): array => ['id' => (string) $actor->id, 'name' => $actor->name]);
+
+        $events = $recent
+            ->when(isset($filters['actor_id']), fn ($query) => $query->where('actor_id', $filters['actor_id']))
             ->when(isset($filters['action']), fn ($query) => $query->where('action', $filters['action']))
             ->when(isset($filters['from']), fn ($query) => $query->where(
                 'occurred_at', '>=',
@@ -45,7 +52,8 @@ class OrganizationAccessLogController extends Controller
 
         return Inertia::render('organizations/access-log', [
             'organization' => ['id' => (string) $company->id, 'name' => $company->name],
-            'filters' => ['action' => $filters['action'] ?? null, 'from' => $filters['from'] ?? null, 'to' => $filters['to'] ?? null],
+            'actors' => $actors,
+            'filters' => ['action' => $filters['action'] ?? null, 'from' => $filters['from'] ?? null, 'to' => $filters['to'] ?? null, 'actorId' => isset($filters['actor_id']) ? (string) $filters['actor_id'] : null],
             'events' => $events,
         ]);
     }

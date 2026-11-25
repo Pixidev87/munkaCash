@@ -52,6 +52,27 @@ class OrganizationAccessLogFilterTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('to');
     }
 
+    public function test_the_actor_filter_and_its_choices_use_the_companys_retained_events(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->ownerOf($company);
+        $formerMember = User::factory()->create();
+        $foreign = User::factory()->create();
+        $this->travel(-91)->days();
+        OrganizationAccessEvent::record($company, $foreign, Action::CustomerExport);
+        $this->travelBack();
+        OrganizationAccessEvent::record($company, $formerMember, Action::InvitationAccepted);
+        OrganizationAccessEvent::record(Organization::factory()->create(), $foreign, Action::InvoiceExport);
+
+        $route = 'organizations.access-log';
+        $this->actingAs($owner)->get(route($route, [$company, 'actor_id' => $formerMember->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('actors', [['id' => (string) $formerMember->id, 'name' => $formerMember->name]])
+                ->has('events.data', 1)->where('events.data.0.actor', $formerMember->name));
+        $this->get(route($route, [$company, 'actor_id' => $foreign->id]))
+            ->assertInertia(fn (Assert $page) => $page->has('events.data', 0));
+    }
+
     private function ownerOf(Organization $company): User
     {
         $owner = User::factory()->create();

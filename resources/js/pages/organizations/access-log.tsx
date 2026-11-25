@@ -33,10 +33,12 @@ type AccessEvent = {
 
 type Props = {
     organization: { id: string; name: string };
+    actors: { id: string; name: string }[];
     filters: {
         action: keyof typeof actions | null;
         from: string | null;
         to: string | null;
+        actorId: string | null;
     };
     events: {
         data: AccessEvent[];
@@ -45,7 +47,12 @@ type Props = {
     };
 };
 
-export default function AccessLog({ organization, filters, events }: Props) {
+export default function AccessLog({
+    organization,
+    actors,
+    filters,
+    events,
+}: Props) {
     return (
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Hozzáférési napló · ${organization.name}`} />
@@ -90,6 +97,32 @@ export default function AccessLog({ organization, filters, events }: Props) {
                                 message={errors.action ?? errors.page}
                             />
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="access-actor">Végrehajtó</Label>
+                            <select
+                                id="access-actor"
+                                name="actor_id"
+                                defaultValue={filters.actorId ?? ''}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Minden végrehajtó</option>
+                                {filters.actorId &&
+                                    !actors.some(
+                                        (actor) => actor.id === filters.actorId,
+                                    ) && (
+                                        <option value={filters.actorId}>
+                                            A kiválasztott fiókhoz nincs
+                                            elérhető bejegyzés
+                                        </option>
+                                    )}
+                                {actors.map((actor) => (
+                                    <option key={actor.id} value={actor.id}>
+                                        {actor.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.actor_id} />
+                        </div>
                         <fieldset className="grid gap-3 sm:grid-cols-2">
                             <legend className="mb-2 text-sm font-medium">
                                 Időszak (budapesti idő)
@@ -121,7 +154,10 @@ export default function AccessLog({ organization, filters, events }: Props) {
                             <Button type="submit" disabled={processing}>
                                 Szűrés
                             </Button>
-                            {(filters.action || filters.from || filters.to) && (
+                            {(filters.action ||
+                                filters.from ||
+                                filters.to ||
+                                filters.actorId) && (
                                 <Button asChild variant="outline">
                                     <Link href={accessLog(organization.id)}>
                                         Szűrők törlése
