@@ -172,6 +172,34 @@ class ReminderTestDeliveryTest extends TestCase
         $this->get($preview)->assertInertia(fn (Assert $page) => $page->where('approval.status', 'active'));
     }
 
+    public function test_approval_history_shows_recent_revocations_and_delivery_status_only_for_the_selected_invoice(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        [, , $foreignInvoice] = $this->approvedDraft();
+        $approval->testDelivery()->create(['status' => 'pending']);
+        $this->actingAs($owner)->delete(
+            route('organizations.invoices.reminder-approval.destroy', [$company, $invoice]),
+            ['approval_id' => $approval->id],
+        )->assertSessionHasNoErrors();
+
+        $expired = $approval->replicate()->forceFill(['approved_at' => now()->subDays(90)]);
+        $invoice->reminderApprovals()->save($expired);
+
+        $this->get(route('organizations.invoices.reminder-approval-history', [$company, $foreignInvoice]))
+            ->assertNotFound();
+        $this->get(route('organizations.invoices.reminder-approval-history', [$company, $invoice]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('organizations/reminder-approval-history')
+                ->has('approvals.data', 1)
+                ->where('approvals.data.0.id', (string) $approval->id)
+                ->where('approvals.data.0.approvedBy', $owner->name)
+                ->where('approvals.data.0.revokedBy', $owner->name)
+                ->where('approvals.data.0.deliveryStatus', 'blocked')
+                ->missing('approvals.data.0.fingerprint')
+                ->missing('approvals.data.0.recipient')
+                ->missing('approvals.data.0.body'));
+    }
+
     public function test_uncertain_transport_and_abandoned_claims_are_not_retried(): void
     {
         [, , , $approval] = $this->approvedDraft();

@@ -11,6 +11,7 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationExportController;
 use App\Http\Controllers\OrganizationInvitationController;
 use App\Http\Controllers\OrganizationMemberController;
+use App\Http\Controllers\ReminderApprovalHistoryController;
 use App\Http\Controllers\ReminderApprovalRevocationController;
 use App\Http\Controllers\ReminderDeliveryLogController;
 use App\Http\Controllers\ReminderDeliverySettingsController;
@@ -82,6 +83,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::post('invoices/{invoice}/reminder-approval', [ReminderPreviewController::class, 'approve'])
                     ->whereNumber('invoice')
                     ->name('invoices.reminder-approval');
+                Route::get('invoices/{invoice}/reminder-approval-history', [ReminderApprovalHistoryController::class, 'index'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.reminder-approval-history');
                 Route::delete('invoices/{invoice}/reminder-approval', [ReminderApprovalRevocationController::class, 'destroy'])
                     ->whereNumber('invoice')
                     ->name('invoices.reminder-approval.destroy');
