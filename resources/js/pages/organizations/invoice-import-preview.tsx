@@ -1,5 +1,7 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
     confirm,
@@ -27,6 +29,8 @@ type PreviewRow = {
     errors: { code: string; column: string | null; message: string }[];
     status: keyof typeof statusLabels;
 };
+
+type RowFilter = 'all' | 'issues' | PreviewRow['status'];
 
 type Props = {
     organizationId: string;
@@ -62,6 +66,14 @@ export default function InvoiceImportPreview({
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
     }>().props;
+    const [rowFilter, setRowFilter] = useState<RowFilter>('all');
+    const visibleRows = rows.filter((row) => {
+        if (rowFilter === 'issues') {
+            return row.status === 'invalid' || row.status === 'conflict';
+        }
+
+        return rowFilter === 'all' || row.status === rowFilter;
+    });
     const title = summary ? 'Import eredménye' : 'Import előnézete';
 
     return (
@@ -217,58 +229,93 @@ export default function InvoiceImportPreview({
                             </Form>
                         </details>
                     )}
-                    <ol
-                        className="divide-y rounded-xl border"
-                        aria-label="Importálandó sorok"
-                    >
-                        {rows.map((row) => (
-                            <li
-                                className="space-y-2 p-4 text-sm"
-                                key={row.line}
-                            >
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                    <span className="font-medium wrap-break-word">
-                                        {row.line}. sor
-                                        {row.data
-                                            ? ` · ${row.data.invoice_number}`
-                                            : ''}
-                                    </span>
-                                    <span className="rounded-md bg-muted px-2 py-1">
-                                        {statusLabels[row.status]}
-                                    </span>
-                                </div>
-                                {row.data && (
-                                    <p className="text-muted-foreground">
-                                        Ügyfél: {row.data.customer_id} ·
-                                        Határidő: {row.data.due_date} ·{' '}
-                                        {huf.format(row.data.gross_amount)}
-                                    </p>
-                                )}
-                                {row.errors.length > 0 && (
-                                    <ul className="space-y-2">
-                                        {row.errors.map((error) => (
-                                            <li
-                                                className="space-y-1 text-red-600 dark:text-red-400"
-                                                key={`${error.code}:${error.column}:${error.message}`}
-                                            >
-                                                <div className="flex flex-wrap items-baseline gap-x-2">
-                                                    {error.column && (
-                                                        <code className="font-semibold">
-                                                            {error.column}
+                    <div className="space-y-2">
+                        <Label htmlFor="preview-row-filter">
+                            Sorok szűrése
+                        </Label>
+                        <select
+                            id="preview-row-filter"
+                            value={rowFilter}
+                            onChange={(event) =>
+                                setRowFilter(event.target.value as RowFilter)
+                            }
+                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm sm:max-w-xs"
+                        >
+                            <option value="all">Minden sor</option>
+                            <option value="issues">
+                                Hibás és ütköző sorok
+                            </option>
+                            {Object.entries(statusLabels).map(
+                                ([status, label]) => (
+                                    <option key={status} value={status}>
+                                        {label}
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                        <p
+                            className="text-sm text-muted-foreground"
+                            role="status"
+                        >
+                            {visibleRows.length === 0
+                                ? 'Nincs a szűrőnek megfelelő sor.'
+                                : `${visibleRows.length} / ${rows.length} sor látható.`}
+                        </p>
+                    </div>
+                    {visibleRows.length > 0 && (
+                        <ol
+                            className="divide-y rounded-xl border"
+                            aria-label="Importálandó sorok"
+                        >
+                            {visibleRows.map((row) => (
+                                <li
+                                    className="space-y-2 p-4 text-sm"
+                                    key={row.line}
+                                >
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <span className="font-medium wrap-break-word">
+                                            {row.line}. sor
+                                            {row.data
+                                                ? ` · ${row.data.invoice_number}`
+                                                : ''}
+                                        </span>
+                                        <span className="rounded-md bg-muted px-2 py-1">
+                                            {statusLabels[row.status]}
+                                        </span>
+                                    </div>
+                                    {row.data && (
+                                        <p className="text-muted-foreground">
+                                            Ügyfél: {row.data.customer_id} ·
+                                            Határidő: {row.data.due_date} ·{' '}
+                                            {huf.format(row.data.gross_amount)}
+                                        </p>
+                                    )}
+                                    {row.errors.length > 0 && (
+                                        <ul className="space-y-2">
+                                            {row.errors.map((error) => (
+                                                <li
+                                                    className="space-y-1 text-red-600 dark:text-red-400"
+                                                    key={`${error.code}:${error.column}:${error.message}`}
+                                                >
+                                                    <div className="flex flex-wrap items-baseline gap-x-2">
+                                                        {error.column && (
+                                                            <code className="font-semibold">
+                                                                {error.column}
+                                                            </code>
+                                                        )}
+                                                        <code className="text-xs">
+                                                            {error.code}
                                                         </code>
-                                                    )}
-                                                    <code className="text-xs">
-                                                        {error.code}
-                                                    </code>
-                                                </div>
-                                                <p>{error.message}</p>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </li>
-                        ))}
-                    </ol>
+                                                    </div>
+                                                    <p>{error.message}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </li>
+                            ))}
+                        </ol>
+                    )}
                 </>
             )}
         </div>
