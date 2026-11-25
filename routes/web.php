@@ -63,6 +63,7 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::patch('customers/{customer}/contact-restriction', [ReminderDeliverySettingsController::class, 'customer'])
                     ->whereNumber('customer')
                     ->name('customers.contact-restriction');
+                Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
                 Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
                 Route::prefix('customers/{customer}/billing-contact')->whereNumber('customer')
                     ->name('customers.billing-contact.')->group(function () {

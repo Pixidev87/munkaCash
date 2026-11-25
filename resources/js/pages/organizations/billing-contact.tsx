@@ -3,7 +3,10 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { contactRestriction } from '@/routes/organizations/customers';
+import {
+    contactRestriction,
+    index as customerList,
+} from '@/routes/organizations/customers';
 import {
     confirm,
     update,
@@ -37,12 +40,20 @@ export default function BillingContactPage({
         <div className="w-full max-w-2xl space-y-6 p-4 sm:p-6">
             <Head title="Pénzügyi kapcsolattartó" />
             <header className="space-y-2">
-                <Link
-                    className="text-sm underline"
-                    href={index(organizationId)}
-                >
-                    Vissza a számlákhoz
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                    <Link
+                        className="text-sm underline"
+                        href={index(organizationId)}
+                    >
+                        Vissza a számlákhoz
+                    </Link>
+                    <Link
+                        className="text-sm underline"
+                        href={customerList(organizationId)}
+                    >
+                        Ügyféllista
+                    </Link>
+                </div>
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Pénzügyi kapcsolattartó
                 </h1>
