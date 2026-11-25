@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Organization;
+use App\Services\OrganizationBalanceSummary;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,19 +26,21 @@ class OrganizationController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $organization): Response
+    public function show(Request $request, string $organization, OrganizationBalanceSummary $summary): Response
     {
         $selected = $request->user()->findActiveOrganization($organization);
+        $exportAvailable = $selected->exportAvailable();
 
         return Inertia::render('organizations/show', [
             'name' => $selected->name,
             'organizationId' => (string) $selected->id,
+            'balanceSummary' => $exportAvailable ? $summary->forOrganization($selected) : null,
             'remindersEnabled' => $selected->reminders_enabled,
-            'canExportData' => $selected->exportAvailable() && $request->user()->can('exportData', $selected),
+            'canExportData' => $exportAvailable && $request->user()->can('exportData', $selected),
             'closeout' => $selected->isClosing() ? [
                 'startedAt' => $selected->closeout_started_at?->toISOString(),
                 'exportUntil' => $selected->export_until?->toISOString(),
-                'exportAvailable' => $selected->exportAvailable(),
+                'exportAvailable' => $exportAvailable,
             ] : null,
             'canStartCloseout' => ! $selected->isClosing() && $request->user()->can('closeout', $selected),
             'canManageMembers' => $request->user()->can('manageMembers', $selected),
