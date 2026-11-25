@@ -24,6 +24,12 @@ class Customer extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    /** @return HasMany<CustomerBillingContactEvent, $this> */
+    public function billingContactEvents(): HasMany
+    {
+        return $this->hasMany(CustomerBillingContactEvent::class);
+    }
+
     protected function casts(): array
     {
         return [

@@ -14,7 +14,25 @@ import {
 } from '@/routes/organizations/customers/billing-contact';
 import { index } from '@/routes/organizations/invoices';
 
+const eventLabels = {
+    address_changed: 'Pénzügyi e-mail-cím módosítva',
+    confirmed: 'Pénzügyi e-mail-cím megerősítve',
+    confirmation_revoked: 'Címmegerősítés visszavonva',
+};
+
+const timestamp = new Intl.DateTimeFormat('hu-HU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Budapest',
+});
+
 type Props = {
+    billingContactEvents: {
+        id: string;
+        action: keyof typeof eventLabels;
+        actor: string | null;
+        occurredAt: string;
+    }[];
     organizationId: string;
     canManageReminders: boolean;
     customer: {
@@ -31,6 +49,7 @@ export default function BillingContactPage({
     organizationId,
     customer,
     canManageReminders,
+    billingContactEvents,
 }: Props) {
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
@@ -229,6 +248,38 @@ export default function BillingContactPage({
                             )}
                         </Form>
                     </>
+                )}
+            </section>
+            <section className="space-y-3 rounded-xl border p-4">
+                <h2 className="font-semibold">
+                    Legutóbbi kapcsolattartói műveletek
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    Az elmúlt 90 nap legfeljebb 10 friss bejegyzése.
+                </p>
+                {billingContactEvents.length ? (
+                    <ul className="divide-y">
+                        {billingContactEvents.map((event) => (
+                            <li
+                                key={event.id}
+                                className="space-y-1 py-2 text-sm"
+                            >
+                                <p>{eventLabels[event.action]}</p>
+                                <p className="wrap-break-word text-muted-foreground">
+                                    {event.actor ?? 'Törölt fiók'} ·{' '}
+                                    <time dateTime={event.occurredAt}>
+                                        {timestamp.format(
+                                            new Date(event.occurredAt),
+                                        )}
+                                    </time>
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Még nincs rögzített művelet.
+                    </p>
                 )}
             </section>
         </div>

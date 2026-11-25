@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BillingContactAction;
 use App\Http\Requests\Customers\ConfirmBillingContactRequest;
 use App\Http\Requests\Customers\RevokeBillingContactConfirmationRequest;
 use App\Http\Requests\Customers\UpdateBillingContactRequest;
 use App\Models\Customer;
+use App\Models\CustomerBillingContactEvent;
+use App\Models\User;
 use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderTestQueue;
 use Illuminate\Http\RedirectResponse;
@@ -22,9 +25,24 @@ class BillingContactController extends Controller
         $company = $user->findActiveOrganization($organization);
         $contact = $company->customers()->findOrFail($customer);
 
+        $events = $contact->billingContactEvents()
+            ->where('occurred_at', '>', now()->subDays(CustomerBillingContactEvent::RETENTION_DAYS))
+            ->with('actor:id,name')
+            ->latest('occurred_at')
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(static fn (CustomerBillingContactEvent $event): array => [
+                'id' => (string) $event->id,
+                'action' => $event->action->value,
+                'actor' => $event->actor?->name,
+                'occurredAt' => $event->occurred_at->toISOString(),
+            ]);
+
         return Inertia::render('organizations/billing-contact', [
             'organizationId' => $organization,
             'canManageReminders' => $user->can('approveReminder', $company),
+            'billingContactEvents' => $events,
             'customer' => [
                 'id' => (string) $contact->id,
                 'name' => $contact->display_name,
@@ -64,6 +82,7 @@ class BillingContactController extends Controller
                 $this->changedContact('address');
             }
 
+            $this->recordEvent($contact, $request->user(), BillingContactAction::AddressChanged);
             $queue->blockPending($company, ReminderDeliveryControls::BILLING_CONTACT_CHANGED, $contact);
         }
 
@@ -96,6 +115,8 @@ class BillingContactController extends Controller
             if ($updated === 0) {
                 $this->changedContact('confirmation');
             }
+
+            $this->recordEvent($contact, $request->user(), BillingContactAction::Confirmed);
         }
 
         return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);
@@ -127,10 +148,20 @@ class BillingContactController extends Controller
                 $this->changedContact('revocation');
             }
 
+            $this->recordEvent($contact, $request->user(), BillingContactAction::ConfirmationRevoked);
             $queue->blockPending($company, ReminderDeliveryControls::BILLING_CONFIRMATION_REVOKED, $contact);
         }
 
         return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);
+    }
+
+    private function recordEvent(Customer $contact, User $actor, BillingContactAction $action): void
+    {
+        $contact->billingContactEvents()->create([
+            'actor_id' => $actor->id,
+            'action' => $action,
+            'occurred_at' => now(),
+        ]);
     }
 
     private function customer(Request $request, string $organization, string $customer): Customer
