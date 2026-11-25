@@ -92,6 +92,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::post('invoices/{invoice}/reminder-test-delivery', [ReminderTestDeliveryController::class, 'store'])
                     ->whereNumber('invoice')
                     ->name('invoices.reminder-test-delivery');
+                Route::delete('invoices/{invoice}/reminder-test-delivery', [ReminderTestDeliveryController::class, 'destroy'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.reminder-test-delivery.destroy');
                 Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
                 Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
                 Route::prefix('invoice-imports')->name('invoice-imports.')->group(function () {

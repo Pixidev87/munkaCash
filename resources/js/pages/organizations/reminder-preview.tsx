@@ -1,4 +1,4 @@
-import { Form, Head, Link, router } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import {
     deliveryLabels,
@@ -14,6 +14,8 @@ import {
     reminderApprovalHistory,
     reminderTestDelivery,
 } from '@/routes/organizations/invoices';
+
+import { destroy as cancelDelivery } from '@/routes/organizations/invoices/reminder-test-delivery';
 
 type Props = {
     organizationId: string;
@@ -40,6 +42,7 @@ type Props = {
     testRecipient: boolean;
     lastDeliveryAttemptAt: string | null;
     testDelivery: {
+        id: string;
         status: DeliveryStatus;
         reason: string | null;
         availableAt: string | null;
@@ -93,6 +96,9 @@ export default function ReminderPreviewPage({
     testDelivery,
     approval,
 }: Props) {
+    const { errors } = usePage<{
+        errors: { deliveryCancellation?: { delivery_id?: string } };
+    }>().props;
     return (
         <div className="w-full max-w-3xl space-y-6 p-4 sm:p-6">
             <Head title="Emlékeztető előnézete" />
@@ -345,6 +351,40 @@ export default function ReminderPreviewPage({
                                 </time>
                             </p>
                         )}
+                    {canApprove && testDelivery.status === 'pending' && (
+                        <Form
+                            {...cancelDelivery.form({
+                                organization: organizationId,
+                                invoice: invoiceId,
+                            })}
+                            errorBag="deliveryCancellation"
+                            className="space-y-2"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="delivery_id"
+                                        value={testDelivery.id}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="outline"
+                                        disabled={processing}
+                                    >
+                                        Várakozó tesztküldés leállítása
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    )}
+                    {testDelivery.reason === 'delivery_cancelled' &&
+                        approval?.status === 'active' && (
+                            <p className="text-sm text-muted-foreground">
+                                Új tesztküldéshez vond vissza a jóváhagyást,
+                                majd hagyd jóvá ismét az előnézetet.
+                            </p>
+                        )}
                     {(testDelivery.status === 'pending' ||
                         testDelivery.status === 'sending') && (
                         <Button
@@ -356,6 +396,11 @@ export default function ReminderPreviewPage({
                     )}
                 </section>
             )}
+
+            <InputError
+                message={errors.deliveryCancellation?.delivery_id}
+                role="alert"
+            />
 
             {deliveryBlocker && deliveryBlocker !== 'invoice_disputed' && (
                 <p className="text-sm text-muted-foreground">

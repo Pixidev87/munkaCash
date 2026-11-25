@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ReminderTestDeliveryStatus;
+use App\Http\Requests\Reminders\CancelReminderTestRequest;
 use App\Http\Requests\Reminders\QueueReminderTestRequest;
 use App\Services\ReminderApprovalStatus;
 use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderDeliveryTiming;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
+use App\Services\ReminderTestQueue;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -67,6 +69,30 @@ class ReminderTestDeliveryController extends Controller
                 'available_at' => $schedule['at'],
             ]);
         }, attempts: 3);
+
+        return to_route('organizations.invoices.reminder-preview', [$organization, $invoice]);
+    }
+
+    public function destroy(
+        CancelReminderTestRequest $request,
+        string $organization,
+        string $invoice,
+        ReminderTestQueue $queue,
+    ): RedirectResponse {
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $selected = $company->invoices()->findOrFail($invoice);
+        Gate::forUser($user)->authorize('approveReminder', $company);
+
+        $approval = $selected->reminderApprovals()->latest('id')->first();
+        $delivery = $approval?->testDelivery()->whereKey($request->validated('delivery_id'))->first();
+        if ($approval === null || $delivery === null
+            || ($delivery->reason !== ReminderDeliveryControls::DELIVERY_CANCELLED
+                && ! $queue->blockPendingForApproval($approval, ReminderDeliveryControls::DELIVERY_CANCELLED))) {
+            throw ValidationException::withMessages([
+                'delivery_id' => 'Ez a tesztküldés már nem várakozik. Ellenőrizd az aktuális állapotot.',
+            ])->errorBag('deliveryCancellation');
+        }
 
         return to_route('organizations.invoices.reminder-preview', [$organization, $invoice]);
     }
