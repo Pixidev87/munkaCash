@@ -39,8 +39,8 @@ return [
 
         'reminder-test' => [
             'transport' => 'smtp',
-            'host' => 'mailpit',
-            'port' => 1025,
+            'host' => env('APP_ENV') === 'closed-pilot' ? '127.0.0.1' : 'mailpit',
+            'port' => env('APP_ENV') === 'closed-pilot' ? (int) env('PILOT_SMTP_PORT', 1026) : 1025,
             'timeout' => 5,
         ],
 

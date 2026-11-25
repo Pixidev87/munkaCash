@@ -30,8 +30,8 @@ class SetUpPilotDemo extends Command
 
     public function handle(): int
     {
-        if (! app()->environment('local', 'testing')) {
-            $this->error('Pilot demo data can only be created in a local or testing environment.');
+        if (! app()->environment('local', 'testing', 'closed-pilot')) {
+            $this->error('Pilot demo data can only be created in a local, testing, or closed-pilot environment.');
 
             return self::FAILURE;
         }

@@ -9,7 +9,7 @@ class ReminderTestMailer
 {
     public function enabled(): bool
     {
-        return app()->environment('local', 'testing');
+        return app()->environment('local', 'testing', 'closed-pilot');
     }
 
     public function accepts(string $recipient): bool

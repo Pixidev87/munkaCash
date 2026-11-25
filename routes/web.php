@@ -21,7 +21,9 @@ use App\Http\Controllers\ReminderTestDeliveryController;
 use App\Http\Middleware\EnsureOrganizationOperationsAvailable;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', fn () => app()->environment('closed-pilot')
+    ? to_route('login')
+    : inertia('welcome'))->name('home');
 
 Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group(function () {
     Route::get('dashboard', [OrganizationController::class, 'index'])->name('dashboard');
