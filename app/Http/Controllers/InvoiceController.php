@@ -12,10 +12,9 @@ use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Services\HungarianWorkCalendar;
-use App\Services\OverdueInvoices;
+use App\Services\InvoiceListQuery;
 use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderTestQueue;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -24,30 +23,17 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices, HungarianWorkCalendar $calendar): Response
+    public function index(FilterInvoicesRequest $request, string $organization, InvoiceListQuery $invoiceList, HungarianWorkCalendar $calendar): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to']);
+        $filters = $request->criteria();
         [$sortColumn, $sortDirection] = match ($filters['sort'] ?? null) {
             'due_asc' => ['due_date', 'asc'],
             'due_desc' => ['due_date', 'desc'],
             'outstanding_desc' => ['outstanding_amount', 'desc'],
             default => ['id', 'desc'],
         };
-        $invoices = $company->invoices()
-            ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
-            ->when(isset($filters['customer_id']), fn ($query) => $query->where('customer_id', (int) $filters['customer_id']))
-            ->when(isset($filters['source']), fn ($query) => $query->where('source', $filters['source']))
-            ->when(isset($filters['status']), fn ($query) => $query->where('status', $filters['status']))
-            ->when(isset($filters['disputed']), fn ($query) => $query->where('is_disputed', true))
-            ->when(isset($filters['overdue']), fn ($query) => $query->whereIn('id', $overdueInvoices->queryFor($company)->select('id')))
-            ->when(isset($filters['awaiting_balance']), fn ($query) => $query
-                ->where('currency', 'HUF')
-                ->where(fn (Builder $balance) => $balance->whereNull('status_checked_at')->orWhereNull('outstanding_amount')))
-            ->when(isset($filters['billing_unconfirmed']), fn ($query) => $query
-                ->whereIn('customer_id', $company->customers()->withoutConfirmedBillingAddress()->select('id')))
-            ->when(isset($filters['due_from']), fn ($query) => $query->whereDate('due_date', '>=', $filters['due_from']))
-            ->when(isset($filters['due_to']), fn ($query) => $query->whereDate('due_date', '<=', $filters['due_to']))
+        $invoices = $invoiceList->matching($company, $filters)
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->orderBy($sortColumn, $sortDirection)
             ->when($sortColumn !== 'id', fn ($query) => $query->latest('id'))
