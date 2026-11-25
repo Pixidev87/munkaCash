@@ -31,11 +31,18 @@ type PreviewRow = {
 type Props = {
     organizationId: string;
     importId: string;
+    expiresAt: string;
     rows: PreviewRow[];
     canImport: boolean;
     previewCounts: Record<keyof typeof statusLabels, number> | null;
     summary: { created: number; unchanged: number } | null;
 };
+
+const timestamp = new Intl.DateTimeFormat('hu-HU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Budapest',
+});
 
 const huf = new Intl.NumberFormat('hu-HU', {
     style: 'currency',
@@ -46,6 +53,7 @@ const huf = new Intl.NumberFormat('hu-HU', {
 export default function InvoiceImportPreview({
     organizationId,
     importId,
+    expiresAt,
     rows,
     canImport,
     previewCounts,
@@ -69,6 +77,14 @@ export default function InvoiceImportPreview({
                 <h1 className="text-2xl font-semibold tracking-tight">
                     {title}
                 </h1>
+                <p className="text-sm text-muted-foreground">
+                    {summary
+                        ? 'Eredmény elérhető eddig'
+                        : 'Előnézet elérhető eddig'}{' '}
+                    <time dateTime={expiresAt}>
+                        {timestamp.format(new Date(expiresAt))}
+                    </time>
+                </p>
             </header>
 
             {summary ? (
