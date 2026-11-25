@@ -206,7 +206,7 @@ class InvoiceTrackingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('invoices.data', 1)
                 ->where('invoices.data.0.id', (string) $matching->id)
-                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'disputed' => true]));
+                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'disputed' => true, 'overdue' => false]));
         $this->get($route.'?status=paid&disputed=1')
             ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
 

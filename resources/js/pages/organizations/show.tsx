@@ -39,6 +39,7 @@ export default function OrganizationPage({
     organizationId: string;
     balanceSummary: {
         outstanding: string;
+        overdue: string;
         disputed: string;
         unchecked: number;
     } | null;
@@ -83,13 +84,35 @@ export default function OrganizationPage({
             {balanceSummary && (
                 <section className="w-full space-y-3 rounded-xl border p-4">
                     <h2 className="font-semibold">Kintlévőségek összesítése</h2>
-                    <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
                         <div>
                             <dt className="text-muted-foreground">
                                 Ellenőrzött, nem vitatott
                             </dt>
                             <dd className="mt-1 font-semibold">
                                 {huf.format(BigInt(balanceSummary.outstanding))}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="text-muted-foreground">
+                                Lejárt, ellenőrzött, nem vitatott
+                            </dt>
+                            <dd className="mt-1 font-semibold">
+                                {huf.format(BigInt(balanceSummary.overdue))}
+                            </dd>
+                            <dd className="mt-1">
+                                <Link
+                                    className="underline"
+                                    href={index(organizationId, {
+                                        query: { overdue: 1 },
+                                    })}
+                                >
+                                    Lejárt számlák megnyitása
+                                </Link>
+                            </dd>
+                            <dd className="mt-1 text-muted-foreground">
+                                A lejárt összeg a beállított magyar munkanaptár
+                                éveit fedi le.
                             </dd>
                         </div>
                         <div>

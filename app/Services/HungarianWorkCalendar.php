@@ -36,4 +36,36 @@ class HungarianWorkCalendar
 
         return $workday === true ? $date : null;
     }
+
+    /**
+     * @return list<array{string, string}> Inclusive start and exclusive end.
+     */
+    public function overdueRanges(CarbonImmutable $today): array
+    {
+        $yesterday = $today->setTimezone(self::TIMEZONE)->startOfDay()->subDay();
+        $ranges = [];
+
+        foreach (Config::array('reminder-calendar') as $year => $calendar) {
+            if (! is_int($year) || $year > $yesterday->year || ! is_array($calendar)) {
+                continue;
+            }
+
+            $start = $yesterday->setDate($year, 1, 1);
+            $end = $start->setDate($year, 12, 31)->min($yesterday);
+            $deadline = $this->effectiveDeadline($end);
+
+            if ($deadline === null || $deadline->gt($yesterday)) {
+                // The trailing non-workdays are still pending or lack a verified next workday.
+                while ($end->gte($start) && $this->isWorkday($end) !== true) {
+                    $end = $end->subDay();
+                }
+            }
+
+            if ($end->gte($start)) {
+                $ranges[] = [$start->toDateString(), $end->addDay()->toDateString()];
+            }
+        }
+
+        return $ranges;
+    }
 }

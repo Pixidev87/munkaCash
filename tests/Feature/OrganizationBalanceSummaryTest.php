@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -15,6 +16,7 @@ class OrganizationBalanceSummaryTest extends TestCase
     public function test_summary_separates_checked_and_disputed_balances_and_ignores_other_companies(): void
     {
         $company = Organization::factory()->create();
+        $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
         $other = Organization::factory()->create();
         $member = User::factory()->create();
         $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
@@ -35,6 +37,7 @@ class OrganizationBalanceSummaryTest extends TestCase
         $this->actingAs($member)->get(route('organizations.show', $company))
             ->assertInertia(fn (Assert $page) => $page->where('balanceSummary', [
                 'outstanding' => '200000',
+                'overdue' => '200000',
                 'disputed' => '120000',
                 'unchecked' => 2,
             ]));
@@ -51,7 +54,7 @@ class OrganizationBalanceSummaryTest extends TestCase
 
         $this->actingAs($owner)->get($url)
             ->assertInertia(fn (Assert $page) => $page->where('balanceSummary', [
-                'outstanding' => '0', 'disputed' => '0', 'unchecked' => 0,
+                'outstanding' => '0', 'overdue' => '0', 'disputed' => '0', 'unchecked' => 0,
             ]));
 
         $this->invoices($company, [['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()]]);
@@ -59,6 +62,35 @@ class OrganizationBalanceSummaryTest extends TestCase
         $this->get($url)->assertInertia(fn (Assert $page) => $page->where('balanceSummary.outstanding', '120000'));
         $this->travel(30)->days();
         $this->get($url)->assertInertia(fn (Assert $page) => $page->where('balanceSummary', null));
+    }
+
+    public function test_overdue_summary_and_filtered_list_share_the_holiday_cutoff(): void
+    {
+        $this->travelTo(Carbon::parse('2026-12-28 22:59:59', 'UTC'));
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
+        $this->invoices($company, [
+            ['due_date' => '2026-12-24', 'status' => 'partially_paid', 'outstanding_amount' => 80_000, 'status_checked_at' => now()],
+            ['due_date' => '2026-12-23', 'status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now(), 'is_disputed' => true],
+            ['due_date' => '2026-12-23', 'status' => 'paid', 'outstanding_amount' => 0, 'status_checked_at' => now()],
+            ['due_date' => '2026-12-23'],
+            ['due_date' => '2025-12-18', 'status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()],
+        ]);
+        $show = route('organizations.show', $company);
+        $list = route('organizations.invoices.index', [$company, 'overdue' => 1]);
+
+        $this->actingAs($member)->get($show)
+            ->assertInertia(fn (Assert $page) => $page->where('balanceSummary.overdue', '0'));
+        $this->get($list)->assertInertia(fn (Assert $page) => $page
+            ->where('filters.overdue', true)
+            ->has('invoices.data', 0));
+
+        $this->travel(1)->second();
+        $this->get($show)->assertInertia(fn (Assert $page) => $page->where('balanceSummary.overdue', '80000'));
+        $this->get($list)->assertInertia(fn (Assert $page) => $page
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.number', 'DEMO-0'));
     }
 
     private function invoices(Organization $company, array $rows): void

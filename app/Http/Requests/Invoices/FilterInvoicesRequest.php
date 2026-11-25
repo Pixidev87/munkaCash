@@ -18,6 +18,7 @@ class FilterInvoicesRequest extends FormRequest
             'invoice_number' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::enum(InvoiceStatus::class)],
             'disputed' => ['nullable', 'in:1'],
+            'overdue' => ['nullable', 'in:1'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
     }
@@ -28,6 +29,7 @@ class FilterInvoicesRequest extends FormRequest
         return [
             'invoice_number.*' => 'A számlaszám legfeljebb 100 karakter lehet.',
             'status.*' => 'Válassz érvényes fizetési állapotot.',
+            'overdue.*' => 'A lejárt számlák szűrője érvénytelen.',
             'disputed.*' => 'A vitatott számlák szűrője érvénytelen.',
             'page.*' => 'Az oldalszám legyen pozitív egész szám.',
         ];

@@ -18,7 +18,12 @@ type Props = {
     organization: NamedRecord;
     customers: NamedRecord[];
     selectedCustomerId: string;
-    filters: { invoiceNumber: string; status: string; disputed: boolean };
+    filters: {
+        invoiceNumber: string;
+        status: string;
+        disputed: boolean;
+        overdue: boolean;
+    };
     invoices: {
         data: Invoice[];
         prev_page_url: string | null;
@@ -37,7 +42,10 @@ export default function InvoicesPage({
         organizationReadOnly: boolean;
     }>().props;
     const hasFilters = Boolean(
-        filters.invoiceNumber || filters.status || filters.disputed,
+        filters.invoiceNumber ||
+        filters.status ||
+        filters.disputed ||
+        filters.overdue,
     );
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
@@ -271,8 +279,21 @@ export default function InvoicesPage({
                                 />
                                 Csak vitatott számlák
                             </label>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="overdue"
+                                    value="1"
+                                    defaultChecked={filters.overdue}
+                                />
+                                Csak lejárt, ellenőrzött, nem vitatott számlák
+                            </label>
                             <InputError
-                                message={errors.disputed ?? errors.page}
+                                message={
+                                    errors.disputed ??
+                                    errors.overdue ??
+                                    errors.page
+                                }
                             />
                             <div className="flex flex-wrap items-center gap-3">
                                 <Button
