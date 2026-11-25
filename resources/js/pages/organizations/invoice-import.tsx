@@ -3,7 +3,11 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { store, template } from '@/routes/organizations/invoice-imports';
+import {
+    index as history,
+    store,
+    template,
+} from '@/routes/organizations/invoice-imports';
 import { index } from '@/routes/organizations/invoices';
 
 type Props = {
@@ -38,6 +42,12 @@ export default function InvoiceImportPage({
                 <p className="text-sm text-muted-foreground">
                     {organization.name}
                 </p>
+                <Link
+                    className="text-sm underline"
+                    href={history(organization.id)}
+                >
+                    Importelőzmények
+                </Link>
             </header>
 
             {organizationReadOnly ? (

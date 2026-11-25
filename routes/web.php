@@ -86,6 +86,7 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
                 Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
                 Route::prefix('invoice-imports')->name('invoice-imports.')->group(function () {
+                    Route::get('/', [InvoiceImportController::class, 'index'])->name('index');
                     Route::get('new', [InvoiceImportController::class, 'create'])->name('create');
                     Route::get('template', [InvoiceImportController::class, 'template'])->name('template');
                     Route::post('/', [InvoiceImportController::class, 'store'])->name('store');
