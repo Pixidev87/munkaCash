@@ -46,6 +46,8 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 ->name('exports.customers');
             Route::get('exports/invoices', [OrganizationExportController::class, 'invoices'])
                 ->name('exports.invoices');
+            Route::get('exports/filtered-invoices', [OrganizationExportController::class, 'filteredInvoices'])
+                ->name('exports.filtered-invoices');
             Route::post('closeout', [OrganizationCloseoutController::class, 'store'])->name('closeout');
             Route::middleware(EnsureOrganizationOperationsAvailable::class)->group(function () {
                 Route::get('access-log', [OrganizationAccessLogController::class, 'index'])->name('access-log');

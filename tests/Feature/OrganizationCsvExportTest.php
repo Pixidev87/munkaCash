@@ -87,6 +87,40 @@ class OrganizationCsvExportTest extends TestCase
         $this->get($url)->assertNotFound();
     }
 
+    public function test_filtered_export_is_owner_only_and_exports_all_matching_rows_in_the_company(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->attach($company, 'owner');
+        $member = $this->attach($company, 'member');
+        $foreign = Organization::factory()->create();
+        $foreignCustomer = $foreign->customers()->create(['display_name' => 'Másik cég']);
+        $customer = $company->customers()->create(['display_name' => 'Minta ügyfél']);
+        $attributes = ['customer_id' => $customer->id, 'due_date' => '2026-12-01', 'gross_amount' => 120_000];
+        foreach (range(1, 26) as $number) {
+            $company->invoices()->create([...$attributes, 'invoice_number' => '+PILOT-'.$number]);
+        }
+        $company->invoices()->create([...$attributes, 'invoice_number' => 'OUT', 'due_date' => '2026-12-02']);
+        $foreign->invoices()->create([...$attributes, 'invoice_number' => 'FOREIGN', 'customer_id' => $foreignCustomer->id]);
+        $route = 'organizations.exports.filtered-invoices';
+        $params = ['organization' => $company, 'due_from' => '2026-12-01', 'due_to' => '2026-12-01', 'page' => 2];
+
+        $this->actingAs($member)->get(route($route, $params))->assertForbidden();
+        $response = $this->actingAs($owner)->get(route($route, $params))
+            ->assertDownload('munkacash-szurt-szamlak-'.$company->id.'.csv');
+        $rows = $this->rows($response);
+        $this->assertCount(27, $rows);
+        $this->assertSame("'+PILOT-1", $rows[1][2]);
+        $this->assertSame("'+PILOT-26", $rows[26][2]);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $this->getJson(route($route, ['organization' => $company, 'customer_id' => $foreignCustomer->id]))
+            ->assertUnprocessable()->assertJsonValidationErrors('customer_id');
+        $this->post(route('organizations.closeout', $company), ['confirm' => true])->assertRedirect();
+        $this->get(route($route, $params))->assertDownload();
+        $this->travel(30)->days();
+        $this->get(route($route, $params))->assertGone();
+    }
+
     private function attach(Organization $company, string $role, ?User $user = null): User
     {
         $user ??= User::factory()->create();
