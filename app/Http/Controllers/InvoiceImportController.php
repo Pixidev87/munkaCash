@@ -30,11 +30,12 @@ class InvoiceImportController extends Controller
         $company = $user->findActiveOrganization($organization);
         $status = $request->validated('status');
         $available = $this->availableBatches($company->id, $user->id);
-        $query = (clone $available)->toBase();
-        $rowColumn = $query->getGrammar()->wrap('rows');
-        $counts = $query
-            ->selectRaw("COUNT(CASE WHEN {$rowColumn} IS NULL THEN 1 END) AS completed, COUNT(CASE WHEN {$rowColumn} IS NOT NULL THEN 1 END) AS pending")
+        $completed = (clone $available)->whereNull('rows')->selectRaw('COUNT(*)');
+        $counts = (clone $available)->toBase()
+            ->selectRaw('COUNT(*) AS total')
+            ->selectSub($completed, 'completed')
             ->first();
+        $completedCount = (int) ($counts->completed ?? 0);
         $imports = $available
             ->when($status === 'pending', fn ($query) => $query->whereNotNull('rows'))
             ->when($status === 'completed', fn ($query) => $query->whereNull('rows'))
@@ -55,8 +56,8 @@ class InvoiceImportController extends Controller
             'organizationId' => (string) $company->id,
             'status' => $status,
             'counts' => [
-                'completed' => (int) ($counts->completed ?? 0),
-                'pending' => (int) ($counts->pending ?? 0),
+                'completed' => $completedCount,
+                'pending' => (int) ($counts->total ?? 0) - $completedCount,
             ],
             'imports' => $imports,
         ]);
