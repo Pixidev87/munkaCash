@@ -42,6 +42,26 @@ class CustomerDirectoryTest extends TestCase
         $this->get(route('organizations.customers.index', $other))->assertNotFound();
     }
 
+    public function test_name_search_is_literal_and_company_scoped(): void
+    {
+        $company = Organization::factory()->create();
+        $other = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach([$company->id, $other->id], ['status' => 'active']);
+        $company->customers()->create(['display_name' => 'Árvíz 10%_Minta']);
+        $company->customers()->create(['display_name' => 'Árvíz 100AMinta']);
+        $other->customers()->create(['display_name' => 'Külső 10%_Minta']);
+
+        $list = route('organizations.customers.index', $company);
+        $this->actingAs($member)->get($list.'?'.http_build_query(['name' => '10%_']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.name', '10%_')
+                ->has('customers.data', 1)
+                ->where('customers.data.0.name', 'Árvíz 10%_Minta'));
+        $this->from($list)->get($list.'?name='.str_repeat('a', 256))
+            ->assertRedirect($list)->assertSessionHasErrorsIn('customerFilters', 'name');
+    }
+
     public function test_directory_remains_readable_only_until_the_closeout_deadline(): void
     {
         $this->freezeSecond();

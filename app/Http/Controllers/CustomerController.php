@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Customers\FilterCustomersRequest;
 use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,13 +11,20 @@ use Inertia\Response;
 
 class CustomerController extends Controller
 {
-    public function index(Request $request, string $organization): Response
+    public function index(FilterCustomersRequest $request, string $organization): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
+        $name = $request->validated('name');
         $customers = $company->customers()->getQuery()
+            ->when(is_string($name) && $name !== '', function ($query) use ($name) {
+                $escaped = strtr($name, ['!' => '!!', '%' => '!%', '_' => '!_']);
+
+                return $query->whereRaw("display_name LIKE ? ESCAPE '!'", ['%'.$escaped.'%']);
+            })
             ->orderBy('display_name')
             ->orderBy('id')
             ->simplePaginate(25, ['id', 'display_name', 'billing_email', 'billing_email_confirmed_at', 'do_not_contact'])
+            ->appends(['name' => $name])
             ->through(static fn (Customer $customer): array => [
                 'id' => (string) $customer->id,
                 'name' => $customer->display_name,
@@ -31,6 +39,7 @@ class CustomerController extends Controller
         return Inertia::render('organizations/customers', [
             'organization' => ['id' => (string) $company->id, 'name' => $company->name],
             'customers' => $customers,
+            'filters' => ['name' => $name ?? ''],
         ]);
     }
 
