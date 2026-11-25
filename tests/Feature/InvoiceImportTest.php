@@ -363,6 +363,10 @@ class InvoiceImportTest extends TestCase
         $invoice = $company->invoices()->sole();
 
         $this->assertSame($original->id, $invoice->invoice_import_id);
+        $this->get(route('organizations.invoice-imports.show', [$company, $original]))
+            ->assertInertia(fn (Assert $page) => $page->where('summary.hasTrackedInvoices', true));
+        $this->get(route('organizations.invoice-imports.show', [$company, $repeat]))
+            ->assertInertia(fn (Assert $page) => $page->where('summary.hasTrackedInvoices', false));
         $original->update(['expires_at' => now()]);
         $this->artisan('model:prune', ['--model' => [InvoiceImport::class]])->assertSuccessful();
         $this->assertNull($invoice->refresh()->invoice_import_id);

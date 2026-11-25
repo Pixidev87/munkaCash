@@ -144,6 +144,7 @@ class InvoiceImportController extends Controller
             ],
             'canImport' => $service->canImport($rows),
             'summary' => $batch->rows === null ? [
+                'hasTrackedInvoices' => $company->invoices()->where('invoice_import_id', $batch->id)->exists(),
                 'created' => $batch->created_count,
                 'unchanged' => $batch->unchanged_count,
             ] : null,

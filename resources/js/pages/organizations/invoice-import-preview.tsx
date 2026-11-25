@@ -39,7 +39,11 @@ type Props = {
     rows: PreviewRow[];
     canImport: boolean;
     previewCounts: Record<keyof typeof statusLabels, number> | null;
-    summary: { created: number; unchanged: number } | null;
+    summary: {
+        created: number;
+        unchanged: number;
+        hasTrackedInvoices: boolean;
+    } | null;
 };
 
 const timestamp = new Intl.DateTimeFormat('hu-HU', {
@@ -112,12 +116,27 @@ export default function InvoiceImportPreview({
                                 <Link
                                     href={index(organizationId, {
                                         query: {
-                                            source: 'csv',
+                                            ...(summary.hasTrackedInvoices
+                                                ? { import_batch: importId }
+                                                : { source: 'csv' }),
                                             awaiting_balance: 1,
                                         },
                                     })}
                                 >
-                                    CSV-számlák egyenlegének ellenőrzése
+                                    {summary.hasTrackedInvoices
+                                        ? 'Importált számlák egyenlegének ellenőrzése'
+                                        : 'CSV-számlák egyenlegének ellenőrzése'}
+                                </Link>
+                            </Button>
+                        )}
+                        {summary.hasTrackedInvoices && (
+                            <Button asChild variant="outline">
+                                <Link
+                                    href={index(organizationId, {
+                                        query: { import_batch: importId },
+                                    })}
+                                >
+                                    Ezzel az importtal létrehozott számlák
                                 </Link>
                             </Button>
                         )}
