@@ -73,6 +73,9 @@ class InvoiceController extends Controller
             'selectedCustomerId' => is_string($selectedCustomerId) ? $selectedCustomerId : '',
             'invoices' => $invoices,
             'totals' => $totals,
+            'filteredExportUrl' => $request->user()->can('exportData', $company)
+                ? route('organizations.exports.filtered-invoices', ['organization' => $company->id, ...$request->criteriaWithoutSort()], absolute: false)
+                : null,
             'filters' => [
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',

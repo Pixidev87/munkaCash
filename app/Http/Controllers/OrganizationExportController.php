@@ -36,6 +36,6 @@ class OrganizationExportController extends Controller
     ): StreamedResponse {
         $company = $request->company();
 
-        return $export->filteredInvoices($company, $invoiceList->matching($company, $request->criteria()));
+        return $export->filteredInvoices($company, $invoiceList->matching($company, $request->criteriaWithoutSort()));
     }
 }

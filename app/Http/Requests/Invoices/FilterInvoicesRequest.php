@@ -22,6 +22,12 @@ class FilterInvoicesRequest extends FormRequest
         ]);
     }
 
+    /** @return array<string, mixed> */
+    public function criteriaWithoutSort(): array
+    {
+        return array_diff_key($this->criteria(), ['sort' => true]);
+    }
+
     /** @return array<string, list<string|EnumRule|Exists>> */
     public function rules(): array
     {
