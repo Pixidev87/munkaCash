@@ -28,6 +28,7 @@ type Props = {
     importId: string;
     rows: PreviewRow[];
     canImport: boolean;
+    previewCounts: Record<keyof typeof statusLabels, number> | null;
     summary: { created: number; unchanged: number } | null;
 };
 
@@ -42,6 +43,7 @@ export default function InvoiceImportPreview({
     importId,
     rows,
     canImport,
+    previewCounts,
     summary,
 }: Props) {
     const { organizationReadOnly } = usePage<{
@@ -79,6 +81,29 @@ export default function InvoiceImportPreview({
                 </section>
             ) : (
                 <>
+                    {previewCounts && (
+                        <dl
+                            aria-label="Import előnézeti összesítése"
+                            className="grid grid-cols-2 gap-3 rounded-xl border p-4 text-sm sm:grid-cols-4"
+                        >
+                            {Object.entries(statusLabels).map(
+                                ([status, label]) => (
+                                    <div key={status}>
+                                        <dt className="text-muted-foreground">
+                                            {label}
+                                        </dt>
+                                        <dd className="font-semibold">
+                                            {
+                                                previewCounts[
+                                                    status as keyof typeof statusLabels
+                                                ]
+                                            }
+                                        </dd>
+                                    </div>
+                                ),
+                            )}
+                        </dl>
+                    )}
                     <Form
                         {...confirm.form({
                             organization: organizationId,
