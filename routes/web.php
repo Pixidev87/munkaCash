@@ -65,6 +65,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                     ->name('customers.contact-restriction');
                 Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
                 Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+                Route::patch('customers/{customer}', [CustomerController::class, 'update'])
+                    ->whereNumber('customer')
+                    ->name('customers.update');
                 Route::prefix('customers/{customer}/billing-contact')->whereNumber('customer')
                     ->name('customers.billing-contact.')->group(function () {
                         Route::get('/', [BillingContactController::class, 'edit'])->name('edit');

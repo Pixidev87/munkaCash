@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Customers\FilterCustomersRequest;
 use App\Http\Requests\Customers\StoreCustomerRequest;
+use App\Http\Requests\Customers\UpdateCustomerNameRequest;
 use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,5 +68,20 @@ class CustomerController extends Controller
             'organization' => $organization,
             'customer' => $customer->id,
         ]);
+    }
+
+    public function update(UpdateCustomerNameRequest $request, string $organization, string $customer): RedirectResponse
+    {
+        $company = $request->user()->findActiveOrganization($organization);
+        $selected = $company->customers()->lockForUpdate()->findOrFail($customer);
+        if ($selected->display_name !== $request->validated('previous_name')) {
+            throw ValidationException::withMessages([
+                'display_name' => 'Az ügyfél neve közben megváltozott. Ellenőrizd a friss nevet, majd próbáld újra.',
+            ])->errorBag($request->errorBagName());
+        }
+
+        $selected->update($request->safe()->only(['display_name']));
+
+        return back();
     }
 }
