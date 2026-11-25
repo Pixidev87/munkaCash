@@ -6,15 +6,16 @@ use App\Models\Invoice;
 use App\Models\Organization;
 
 /**
- * @phpstan-import-type CsvRow from InvoiceCsvParser
+ * @phpstan-import-type StoredCsvRow from InvoiceCsvParser
+ * @phpstan-import-type CsvIssue from InvoiceCsvParser
  * @phpstan-import-type InvoiceData from InvoiceCsvParser
  *
- * @phpstan-type PreviewRow array{line: int, data: InvoiceData|null, errors: list<string>, status: 'invalid'|'conflict'|'unchanged'|'new'}
+ * @phpstan-type PreviewRow array{line: int, data: InvoiceData|null, errors: list<CsvIssue>, status: 'invalid'|'conflict'|'unchanged'|'new'}
  */
 class InvoiceCsvImport
 {
     /**
-     * @param  list<CsvRow>  $rows
+     * @param  list<StoredCsvRow>  $rows
      * @return list<PreviewRow>
      */
     public function preview(Organization $company, array $rows): array
@@ -33,21 +34,29 @@ class InvoiceCsvImport
 
         return array_map(function (array $row) use ($company, $numbers, $customers): array {
             $data = $row['data'];
+            $row['errors'] = array_map(static fn (array|string $error): array => is_string($error)
+                ? ['code' => 'legacy_row_error', 'column' => null, 'message' => $error]
+                : $error, $row['errors']);
+
             if ($data === null) {
                 return [...$row, 'status' => 'invalid'];
             }
 
             $duplicateLines = $numbers[mb_strtolower($data['invoice_number'])];
             if (count($duplicateLines) > 1) {
-                return [...$row, 'status' => 'conflict', 'errors' => [
-                    'invoice_number: ismétlődő számlaszám a fájlban ('.implode(', ', $duplicateLines).').',
-                ]];
+                return [...$row, 'status' => 'conflict', 'errors' => [[
+                    'code' => 'duplicate_invoice_number',
+                    'column' => 'invoice_number',
+                    'message' => 'Ismétlődő számlaszám ezekben a sorokban: '.implode(', ', $duplicateLines).'.',
+                ]]];
             }
 
             if (! $customers->has($data['customer_id'])) {
-                return [...$row, 'status' => 'invalid', 'errors' => [
-                    'customer_id: ez az ügyfél nem található a kiválasztott cégnél.',
-                ]];
+                return [...$row, 'status' => 'invalid', 'errors' => [[
+                    'code' => 'customer_not_found',
+                    'column' => 'customer_id',
+                    'message' => 'Ez az ügyfél nem található a kiválasztott cégnél.',
+                ]]];
             }
 
             $existing = $company->invoices()->where('invoice_number', $data['invoice_number'])->first();
@@ -55,22 +64,36 @@ class InvoiceCsvImport
                 return [...$row, 'status' => 'new'];
             }
 
-            if ($this->matches($existing, $data)) {
-                return [...$row, 'status' => 'unchanged'];
-            }
+            $differences = $this->differences($existing, $data);
 
-            return [...$row, 'status' => 'conflict', 'errors' => [
-                'invoice_number: a meglévő számla ügyfele, határideje vagy bruttó összege eltér.',
-            ]];
+            return [...$row, 'status' => $differences === [] ? 'unchanged' : 'conflict', 'errors' => $differences];
         }, $rows);
     }
 
-    /** @param InvoiceData $data */
-    private function matches(Invoice $invoice, array $data): bool
+    /**
+     * @param  InvoiceData  $data
+     * @return list<CsvIssue>
+     */
+    private function differences(Invoice $invoice, array $data): array
     {
-        return $invoice->customer_id === $data['customer_id']
-            && $invoice->due_date->toDateString() === $data['due_date']
-            && $invoice->gross_amount === $data['gross_amount'];
+        $fields = [
+            'customer_id' => $invoice->customer_id,
+            'due_date' => $invoice->due_date->toDateString(),
+            'gross_amount' => $invoice->gross_amount,
+        ];
+
+        $errors = [];
+        foreach ($fields as $column => $value) {
+            if ($value !== $data[$column]) {
+                $errors[] = [
+                    'code' => 'existing_invoice_mismatch',
+                    'column' => $column,
+                    'message' => 'A mező értéke eltér az azonos számlaszámú, már rögzített számláétól.',
+                ];
+            }
+        }
+
+        return $errors;
     }
 
     /** @param list<PreviewRow> $rows */

@@ -19,7 +19,7 @@ type PreviewRow = {
         due_date: string;
         gross_amount: number;
     } | null;
-    errors: string[];
+    errors: { code: string; column: string | null; message: string }[];
     status: keyof typeof statusLabels;
 };
 
@@ -140,14 +140,28 @@ export default function InvoiceImportPreview({
                                         {huf.format(row.data.gross_amount)}
                                     </p>
                                 )}
-                                {row.errors.map((error) => (
-                                    <p
-                                        className="text-red-600 dark:text-red-400"
-                                        key={error}
-                                    >
-                                        {error}
-                                    </p>
-                                ))}
+                                {row.errors.length > 0 && (
+                                    <ul className="space-y-2">
+                                        {row.errors.map((error) => (
+                                            <li
+                                                className="space-y-1 text-red-600 dark:text-red-400"
+                                                key={`${error.code}:${error.column}:${error.message}`}
+                                            >
+                                                <div className="flex flex-wrap items-baseline gap-x-2">
+                                                    {error.column && (
+                                                        <code className="font-semibold">
+                                                            {error.column}
+                                                        </code>
+                                                    )}
+                                                    <code className="text-xs">
+                                                        {error.code}
+                                                    </code>
+                                                </div>
+                                                <p>{error.message}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </li>
                         ))}
                     </ol>

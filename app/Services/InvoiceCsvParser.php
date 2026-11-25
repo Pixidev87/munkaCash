@@ -8,7 +8,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * @phpstan-type InvoiceData array{customer_id: int, invoice_number: string, due_date: string, gross_amount: int}
- * @phpstan-type CsvRow array{line: int, data: InvoiceData|null, errors: list<string>}
+ * @phpstan-type CsvIssue array{code: string, column: string|null, message: string}
+ * @phpstan-type CsvRow array{line: int, data: InvoiceData|null, errors: list<CsvIssue>}
+ * @phpstan-type StoredCsvRow array{line: int, data: InvoiceData|null, errors: list<CsvIssue|string>}
  */
 class InvoiceCsvParser
 {
@@ -62,7 +64,11 @@ class InvoiceCsvParser
             return [
                 'line' => $lineNumber,
                 'data' => null,
-                'errors' => ['Pontosan öt, pontosvesszővel elválasztott mező szükséges.'],
+                'errors' => [[
+                    'code' => 'row_structure',
+                    'column' => null,
+                    'message' => 'Pontosan öt, pontosvesszővel elválasztott mező szükséges.',
+                ]],
             ];
         }
 
@@ -84,15 +90,25 @@ class InvoiceCsvParser
             'currency' => ['required', 'in:HUF'],
             'gross_amount' => ['required', 'regex:/\A[0-9]{1,12}\z/', 'integer', 'min:1', 'max:'.Invoice::MAX_GROSS_AMOUNT],
         ], [
-            'customer_id.*' => 'customer_id: add meg egy meglévő ügyfél azonosítóját.',
-            'invoice_number.*' => 'invoice_number: add meg a számlaszámot, legfeljebb 100 karakterben.',
-            'due_date.*' => 'due_date: érvényes dátumot adj meg ÉÉÉÉ-HH-NN formátumban.',
-            'currency.*' => 'currency: kizárólag HUF használható.',
-            'gross_amount.*' => 'gross_amount: pozitív egész forintösszeget adj meg, tagolás nélkül.',
+            'customer_id.*' => 'add meg egy meglévő ügyfél azonosítóját.',
+            'invoice_number.*' => 'add meg a számlaszámot, legfeljebb 100 karakterben.',
+            'due_date.*' => 'érvényes dátumot adj meg ÉÉÉÉ-HH-NN formátumban.',
+            'currency.*' => 'kizárólag HUF használható.',
+            'gross_amount.*' => 'pozitív egész forintösszeget adj meg, tagolás nélkül.',
         ]);
 
         if ($validator->fails()) {
-            return ['line' => $lineNumber, 'data' => null, 'errors' => array_values(array_unique($validator->errors()->all()))];
+            $errors = $validator->errors();
+            $issues = [];
+            foreach ($errors->keys() as $column) {
+                $issues[] = [
+                    'code' => 'invalid_value',
+                    'column' => $column,
+                    'message' => $errors->first($column),
+                ];
+            }
+
+            return ['line' => $lineNumber, 'data' => null, 'errors' => $issues];
         }
 
         return [
