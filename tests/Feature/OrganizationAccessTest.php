@@ -55,8 +55,11 @@ class OrganizationAccessTest extends TestCase
         $user->organizations()->attach($organization->id, ['status' => 'active']);
         $url = route('organizations.show', $organization->id);
 
-        $this->actingAs($user)->get($url)
-            ->assertOk()
+        $response = $this->actingAs($user)->get($url);
+
+        $this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        $this->assertTrue($response->headers->hasCacheControlDirective('private'));
+        $response->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('organizations/show')
                 ->where('name', $organization->name));
