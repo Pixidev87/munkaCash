@@ -49,6 +49,10 @@ class ReminderPreview
     {
         $messages = [];
 
+        if ($invoice->is_disputed) {
+            $messages[] = 'A számla vitatott. Emlékeztető csak a vita feloldása után hagyható jóvá.';
+        }
+
         if ($invoice->due_date->toDateString() >= today('Europe/Budapest')->toDateString()) {
             $messages[] = 'A számla fizetési határideje még nem járt le.';
         }

@@ -32,6 +32,7 @@ type Props = {
         | 'organization_closing'
         | 'organization_paused'
         | 'customer_do_not_contact'
+        | 'invoice_disputed'
         | null;
     testRecipient: boolean;
     lastDeliveryAttemptAt: string | null;
@@ -299,7 +300,7 @@ export default function ReminderPreviewPage({
                 </section>
             )}
 
-            {deliveryBlocker && (
+            {deliveryBlocker && deliveryBlocker !== 'invoice_disputed' && (
                 <p className="text-sm text-muted-foreground">
                     {deliveryReasons[deliveryBlocker]}
                 </p>

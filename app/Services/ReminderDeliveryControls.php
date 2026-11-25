@@ -13,11 +13,14 @@ class ReminderDeliveryControls
 
     public const string CUSTOMER_BLOCKED = 'customer_do_not_contact';
 
+    public const string INVOICE_DISPUTED = 'invoice_disputed';
+
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {
             $company->isClosing() => self::ORGANIZATION_CLOSING,
             ! $company->reminders_enabled => self::ORGANIZATION_PAUSED,
+            $invoice->is_disputed => self::INVOICE_DISPUTED,
             $invoice->customer->do_not_contact => self::CUSTOMER_BLOCKED,
             default => null,
         };
