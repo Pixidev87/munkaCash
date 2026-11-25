@@ -31,3 +31,9 @@ bash bin/pilot scheduler
 | Mailpit | http://127.0.0.1:8026 |
 
 A portok a `PILOT_WEB_PORT`, `PILOT_MAIL_PORT` és `PILOT_SMTP_PORT` változóval módosíthatók. Az SMTP alapértelmezett portja 1026. A meglévő munkanaptár és a 30 perces jóváhagyási ablak a pilotban is érvényes. A [fiktív adatos kipróbálás](pilot-demo.md#kipróbálás) leírja a két cég és a három tesztfiók használatát.
+
+## Üzemeltetési ellenőrzés
+
+A folyamatok indítása után egy perc múlva futtasd a `bash bin/pilot check` parancsot. A parancs hibakóddal tér vissza, ha eltűnik az ütemező vagy a feldolgozó életjele, két percnél régebben feldolgozható feladat marad a sorban, vagy friss, bizonytalan SMTP-átadás látható. A parancs időzített helyi ellenőrzésből is futtatható. Az eredmény darabszámokat mutat, címzettek és levéltartalom nélkül.
+
+Bizonytalan átvételnél hasonlítsd össze a tesztküldési naplót a Mailpitben látható üzenetekkel. A feldolgozó ilyen esetben nem ismétli meg automatikusan a küldést.

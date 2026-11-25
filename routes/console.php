@@ -7,6 +7,7 @@ use App\Models\InvoiceImport;
 use App\Models\OrganizationAccessEvent;
 use App\Models\OrganizationInvitation;
 use App\Models\ReminderApproval;
+use App\Services\ClosedPilotHeartbeat;
 use App\Services\ReminderTestQueue;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -27,7 +28,13 @@ Schedule::command('model:prune', ['--model' => [
     CustomerBillingContactEvent::class,
 ]])->daily();
 
-Schedule::call(fn () => app(ReminderTestQueue::class)->dispatchPending())
+Schedule::call(function (): void {
+    app(ReminderTestQueue::class)->dispatchPending();
+
+    if (app()->environment('closed-pilot')) {
+        app(ClosedPilotHeartbeat::class)->mark(ClosedPilotHeartbeat::SCHEDULER);
+    }
+})
     ->name('reminder-test-delivery')
     ->environments(['local', 'testing', 'closed-pilot'])
     ->everyMinute();
