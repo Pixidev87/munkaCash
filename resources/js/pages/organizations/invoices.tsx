@@ -1,13 +1,16 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
-import InvoiceCard, { type Invoice } from '@/components/invoices/invoice-card';
+import InvoiceCard, {
+    invoiceStatusLabels,
+    type Invoice,
+} from '@/components/invoices/invoice-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
 import { create as createImport } from '@/routes/organizations/invoice-imports';
 import { store as storeCustomer } from '@/routes/organizations/customers';
-import { store as storeInvoice } from '@/routes/organizations/invoices';
+import { index, store as storeInvoice } from '@/routes/organizations/invoices';
 
 type NamedRecord = { id: string; name: string };
 
@@ -15,6 +18,7 @@ type Props = {
     organization: NamedRecord;
     customers: NamedRecord[];
     selectedCustomerId: string;
+    filters: { invoiceNumber: string; status: string; disputed: boolean };
     invoices: {
         data: Invoice[];
         prev_page_url: string | null;
@@ -26,11 +30,15 @@ export default function InvoicesPage({
     organization,
     customers,
     selectedCustomerId,
+    filters,
     invoices,
 }: Props) {
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
     }>().props;
+    const hasFilters = Boolean(
+        filters.invoiceNumber || filters.status || filters.disputed,
+    );
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
             <Head title={`Számlák · ${organization.name}`} />
@@ -208,6 +216,84 @@ export default function InvoicesPage({
 
             <section className="space-y-3">
                 <h2 className="text-lg font-semibold">Rögzített számlák</h2>
+                <Form
+                    key={JSON.stringify(filters)}
+                    {...index.form(organization.id)}
+                    errorBag="invoiceFilters"
+                    options={{ preserveScroll: true }}
+                    className="space-y-3 rounded-xl border p-4"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-invoice-number">
+                                        Teljes számlaszám
+                                    </Label>
+                                    <Input
+                                        id="filter-invoice-number"
+                                        name="invoice_number"
+                                        maxLength={100}
+                                        defaultValue={filters.invoiceNumber}
+                                    />
+                                    <InputError
+                                        message={errors.invoice_number}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-invoice-status">
+                                        Fizetési állapot
+                                    </Label>
+                                    <select
+                                        id="filter-invoice-status"
+                                        name="status"
+                                        defaultValue={filters.status}
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    >
+                                        <option value="">Összes állapot</option>
+                                        {Object.entries(
+                                            invoiceStatusLabels,
+                                        ).map(([status, label]) => (
+                                            <option key={status} value={status}>
+                                                {label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.status} />
+                                </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="disputed"
+                                    value="1"
+                                    defaultChecked={filters.disputed}
+                                />
+                                Csak vitatott számlák
+                            </label>
+                            <InputError
+                                message={errors.disputed ?? errors.page}
+                            />
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                >
+                                    Szűrés
+                                </Button>
+                                {hasFilters && (
+                                    <Link
+                                        className="text-sm underline"
+                                        href={index(organization.id)}
+                                    >
+                                        Szűrők törlése
+                                    </Link>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </Form>
                 {invoices.data.length ? (
                     <ul className="space-y-3">
                         {invoices.data.map((invoice) => (
@@ -221,7 +307,9 @@ export default function InvoicesPage({
                     </ul>
                 ) : (
                     <p className="text-sm text-muted-foreground">
-                        Ezen az oldalon nincs rögzített számla.
+                        {hasFilters
+                            ? 'Nincs a szűrésnek megfelelő számla.'
+                            : 'Ezen az oldalon nincs rögzített számla.'}
                     </p>
                 )}
                 {(invoices.prev_page_url || invoices.next_page_url) && (

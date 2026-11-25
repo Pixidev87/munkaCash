@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
+use App\Http\Requests\Invoices\FilterInvoicesRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -17,13 +18,18 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(Request $request, string $organization): Response
+    public function index(FilterInvoicesRequest $request, string $organization): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed']);
         $invoices = $company->invoices()
+            ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
+            ->when(isset($filters['status']), fn ($query) => $query->where('status', $filters['status']))
+            ->when(isset($filters['disputed']), fn ($query) => $query->where('is_disputed', true))
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->latest('id')
             ->simplePaginate(25)
+            ->appends($filters)
             ->through(fn (Invoice $invoice): array => [
                 'id' => (string) $invoice->id,
                 'number' => $invoice->invoice_number,
@@ -52,6 +58,11 @@ class InvoiceController extends Controller
                 ]),
             'selectedCustomerId' => is_string($selectedCustomerId) ? $selectedCustomerId : '',
             'invoices' => $invoices,
+            'filters' => [
+                'invoiceNumber' => $filters['invoice_number'] ?? '',
+                'status' => $filters['status'] ?? '',
+                'disputed' => isset($filters['disputed']),
+            ],
         ]);
     }
 
