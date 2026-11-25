@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -28,6 +30,14 @@ class Customer extends Model
     public function billingContactEvents(): HasMany
     {
         return $this->hasMany(CustomerBillingContactEvent::class);
+    }
+
+    /** @param Builder<Customer> $query */
+    #[Scope]
+    protected function withoutConfirmedBillingAddress(Builder $query): void
+    {
+        $query->where(fn (Builder $address) => $address->whereNull('billing_email')
+            ->orWhereNull('billing_email_confirmed_at'));
     }
 
     protected function casts(): array

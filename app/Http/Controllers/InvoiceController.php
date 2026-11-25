@@ -26,7 +26,7 @@ class InvoiceController extends Controller
     public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed']);
         $invoices = $company->invoices()
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
             ->when(isset($filters['customer_id']), fn ($query) => $query->where('customer_id', (int) $filters['customer_id']))
@@ -37,6 +37,8 @@ class InvoiceController extends Controller
             ->when(isset($filters['awaiting_balance']), fn ($query) => $query
                 ->where('currency', 'HUF')
                 ->where(fn (Builder $balance) => $balance->whereNull('status_checked_at')->orWhereNull('outstanding_amount')))
+            ->when(isset($filters['billing_unconfirmed']), fn ($query) => $query
+                ->whereIn('customer_id', $company->customers()->withoutConfirmedBillingAddress()->select('id')))
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->latest('id')
             ->simplePaginate(25)
@@ -79,6 +81,7 @@ class InvoiceController extends Controller
                 'disputed' => isset($filters['disputed']),
                 'overdue' => isset($filters['overdue']),
                 'awaitingBalance' => isset($filters['awaiting_balance']),
+                'billingUnconfirmed' => isset($filters['billing_unconfirmed']),
             ],
         ]);
     }
