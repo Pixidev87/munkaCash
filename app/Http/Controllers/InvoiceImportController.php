@@ -129,6 +129,7 @@ class InvoiceImportController extends Controller
         return Inertia::render('organizations/invoice-import-preview', [
             'organizationId' => $organization,
             'importId' => $batch->id,
+            'expiresAt' => $batch->expires_at->toISOString(),
             'rows' => array_map(static fn (array $row): array => [
                 ...$row,
                 'data' => $row['data'] === null ? null : [

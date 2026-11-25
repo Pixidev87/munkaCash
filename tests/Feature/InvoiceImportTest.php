@@ -288,6 +288,20 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoices', 1);
     }
 
+    public function test_preview_and_result_show_their_respective_expiry_dates(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user)->freezeSecond();
+        $batch = $this->upload($company, "{$customer};00042;2026-12-01;HUF;120000");
+        $page = route('organizations.invoice-imports.show', [$company, $batch]);
+
+        $this->get($page)->assertInertia(fn (Assert $page) => $page
+            ->where('expiresAt', now()->addMinutes(30)->toISOString()));
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+        $this->get($page)->assertInertia(fn (Assert $page) => $page
+            ->where('expiresAt', now()->addDays(30)->toISOString()));
+    }
+
     public function test_expired_previews_cannot_be_opened_or_confirmed_and_are_pruned(): void
     {
         [$company, $user, $customer] = $this->createCompany();
