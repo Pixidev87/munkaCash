@@ -68,6 +68,11 @@ class ReminderPreviewTest extends TestCase
         $this->actingAs($user)->patch($update, ['billing_email' => 'invalid', 'revision' => 0])
             ->assertSessionHasErrorsIn('address', 'billing_email');
 
+        $this->patch($update, ['billing_email' => ['wrong'], 'revision' => -1])
+            ->assertSessionHasErrorsIn('address', ['billing_email', 'revision']);
+        $this->post(route('organizations.customers.billing-contact.confirm', [$company, $customer]))
+            ->assertSessionHasErrorsIn('confirmation', 'revision');
+
         $customer->forceFill([
             'billing_email' => 'billing@example.test',
             'billing_email_confirmed_at' => now(),
