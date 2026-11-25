@@ -152,6 +152,24 @@ class InvoiceImportController extends Controller
         ]);
     }
 
+    public function receipt(Request $request, string $organization, string $import): StreamedResponse
+    {
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $batch = InvoiceImport::query()->availableTo($company->id, $user->id)
+            ->whereNull('rows')->findOrFail($import);
+
+        return SpreadsheetCsv::download('munkacash-importeredmeny.csv', [
+            'uploaded_at_utc', 'confirmed_at_utc', 'expires_at_utc', 'created_count', 'unchanged_count',
+        ], [[
+            $batch->created_at?->toISOString(),
+            $batch->confirmed_at?->toISOString(),
+            $batch->expires_at->toISOString(),
+            $batch->created_count,
+            $batch->unchanged_count,
+        ]]);
+    }
+
     public function errorReport(Request $request, string $organization, string $import, InvoiceCsvImport $service): StreamedResponse
     {
         $user = $request->user();

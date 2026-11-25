@@ -420,6 +420,28 @@ class InvoiceImportTest extends TestCase
                 ->where('rows.1.status', 'invalid'));
     }
 
+    public function test_only_the_uploader_can_download_an_unexpired_completed_receipt(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $coworker = User::factory()->create();
+        $coworker->organizations()->attach($company, ['status' => 'active']);
+        $this->actingAs($user)->freezeSecond();
+        $batch = $this->upload($company, "{$customer};PRIVATE-RECORD;2026-12-01;HUF;120000");
+        $url = route('organizations.invoice-imports.receipt', [$company, $batch]);
+        $this->get($url)->assertNotFound();
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+
+        $download = $this->get($url)->assertDownload('munkacash-importeredmeny.csv');
+        $content = $download->streamedContent();
+        $this->assertStringContainsString('uploaded_at_utc;confirmed_at_utc;expires_at_utc;created_count;unchanged_count', $content);
+        $this->assertStringContainsString(now()->toISOString().';'.now()->addDays(30)->toISOString().';1;0', $content);
+        $this->assertStringNotContainsString('PRIVATE-RECORD', $content);
+        $this->assertStringContainsString('no-store', (string) $download->headers->get('Cache-Control'));
+        $this->actingAs($coworker)->get($url)->assertNotFound();
+        $this->actingAs($user)->travel(30)->days();
+        $this->get($url)->assertNotFound();
+    }
+
     /** @return array{Organization, User, int} */
     private function createCompany(): array
     {
