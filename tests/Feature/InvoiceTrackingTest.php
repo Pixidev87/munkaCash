@@ -114,6 +114,9 @@ class InvoiceTrackingTest extends TestCase
                 ->assertSessionHasErrorsIn('balance-'.$invoice->id, 'outstanding_amount');
         }
 
+        $this->patch($url, ['outstanding_amount' => 80_000, 'revision' => -1])
+            ->assertSessionHasErrorsIn('balance-'.$invoice->id, 'revision');
+
         $this->patch($url, ['outstanding_amount' => 80_000, 'revision' => 0])
             ->assertSessionHasNoErrors();
         $this->patch($url, ['outstanding_amount' => 20_000, 'revision' => 0])

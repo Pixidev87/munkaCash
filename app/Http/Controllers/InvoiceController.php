@@ -7,6 +7,7 @@ use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\FilterInvoicesRequest;
 use App\Http\Requests\Invoices\ResetInvoiceBalanceRequest;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
+use App\Http\Requests\Invoices\UpdateInvoiceBalanceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -15,7 +16,6 @@ use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderTestQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -92,28 +92,15 @@ class InvoiceController extends Controller
         return to_route('organizations.invoices.index', $organization);
     }
 
-    public function updateBalance(
-        Request $request,
-        string $organization,
-        string $invoice,
-        ReminderTestQueue $queue,
-    ): RedirectResponse {
+    public function updateBalance(UpdateInvoiceBalanceRequest $request, ReminderTestQueue $queue): RedirectResponse
+    {
         $user = $request->user();
-        $company = $user->findActiveOrganization($organization);
-        $selected = $company->invoices()->findOrFail($invoice);
-        $bag = 'balance-'.$invoice;
-        $data = $request->validateWithBag($bag, [
-            'outstanding_amount' => ['required', 'integer', 'min:0', 'max:'.$selected->gross_amount],
-            'revision' => ['required', 'integer', 'min:0'],
-        ], [
-            'outstanding_amount.*' => 'Adj meg 0 és a bruttó összeg közötti egész forintértéket.',
-        ]);
-
-        $outstanding = (int) $data['outstanding_amount'];
+        $selected = $request->invoice();
+        $outstanding = (int) $request->validated('outstanding_amount');
         $checkedAt = now();
-        $updated = $company->invoices()
+        $updated = $selected->newQuery()
             ->whereKey($selected->id)
-            ->where('revision', $data['revision'])
+            ->where('revision', $request->validated('revision'))
             ->increment('revision', 1, [
                 'outstanding_amount' => $outstanding,
                 'status' => InvoiceStatus::fromCheckedBalance($selected->gross_amount, $outstanding)->value,
@@ -125,7 +112,7 @@ class InvoiceController extends Controller
         if ($updated === 0) {
             throw ValidationException::withMessages([
                 'outstanding_amount' => 'A számla közben változott. Ellenőrizd a friss egyenleget, majd próbáld újra.',
-            ])->errorBag($bag);
+            ])->errorBag($request->errorBagName());
         }
 
         $selected->balanceEvents()->create([
