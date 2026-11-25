@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\InvoiceSource;
 use App\Models\Invoice;
+use App\Models\InvoiceImport;
 use App\Models\Organization;
 
 /**
@@ -113,12 +114,14 @@ class InvoiceCsvImport
      * @param  list<PreviewRow>  $rows
      * @return array{created_count: int, unchanged_count: int}
      */
-    public function import(Organization $company, array $rows): array
+    public function import(Organization $company, InvoiceImport $batch, array $rows): array
     {
         $created = 0;
         foreach ($rows as $row) {
             if ($row['status'] === 'new' && $row['data'] !== null) {
-                $company->invoices()->make($row['data'])->forceFill(['source' => InvoiceSource::Csv->value])->save();
+                $invoice = $company->invoices()->make($row['data']);
+                $invoice->importBatch()->associate($batch);
+                $invoice->forceFill(['source' => InvoiceSource::Csv->value])->save();
                 $created++;
             }
         }
