@@ -369,6 +369,30 @@ class InvoiceImportTest extends TestCase
         $this->assertSame('csv', $invoice->source);
     }
 
+    public function test_invoice_list_filters_by_accessible_completed_import_only(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $coworker = User::factory()->create();
+        $coworker->organizations()->attach($company, ['status' => 'active']);
+        $this->actingAs($user);
+        $first = $this->upload($company, "{$customer};FROM-A;2026-12-01;HUF;120000");
+        $second = $this->upload($company, "{$customer};FROM-B;2026-12-01;HUF;120000");
+        $params = [$company, 'import_batch' => $first->id];
+        $route = 'organizations.invoices.index';
+
+        $this->getJson(route($route, $params))->assertUnprocessable()->assertJsonValidationErrors('import_batch');
+        $this->confirm($company, $first)->assertSessionHasNoErrors();
+        $this->confirm($company, $second)->assertSessionHasNoErrors();
+        $this->get(route($route, $params))->assertInertia(fn (Assert $page) => $page
+            ->where('filters.importBatchId', $first->id)->has('invoices.data', 1)
+            ->where('invoices.data.0.number', 'FROM-A'));
+        $this->actingAs($coworker)->getJson(route($route, $params))
+            ->assertUnprocessable()->assertJsonValidationErrors('import_batch');
+        $first->update(['expires_at' => now()]);
+        $this->actingAs($user)->getJson(route($route, $params))
+            ->assertUnprocessable()->assertJsonValidationErrors('import_batch');
+    }
+
     /** @return array{Organization, User, int} */
     private function createCompany(): array
     {

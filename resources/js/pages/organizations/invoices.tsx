@@ -26,6 +26,7 @@ type Props = {
     customers: NamedRecord[];
     selectedCustomerId: string;
     filters: {
+        importBatchId: string | null;
         invoiceNumber: string;
         status: string;
         source: string;
@@ -60,6 +61,7 @@ export default function InvoicesPage({
         organizationReadOnly: boolean;
     }>().props;
     const hasFilters = Boolean(
+        filters.importBatchId ||
         filters.invoiceNumber ||
         filters.status ||
         filters.source ||
@@ -258,6 +260,20 @@ export default function InvoicesPage({
                 >
                     {({ errors, processing }) => (
                         <>
+                            {filters.importBatchId && (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="import_batch"
+                                        value={filters.importBatchId}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Csak a kiválasztott importtal
+                                        létrehozott számlák.
+                                    </p>
+                                </>
+                            )}
+                            <InputError message={errors.import_batch} />
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="filter-invoice-number">

@@ -4,6 +4,8 @@ namespace App\Http\Requests\Invoices;
 
 use App\Enums\InvoiceSource;
 use App\Enums\InvoiceStatus;
+use App\Models\InvoiceImport;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum as EnumRule;
@@ -18,7 +20,7 @@ class FilterInvoicesRequest extends FormRequest
     {
         return $this->safe()->only([
             'invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id',
-            'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to',
+            'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to', 'import_batch',
         ]);
     }
 
@@ -28,7 +30,7 @@ class FilterInvoicesRequest extends FormRequest
         return array_diff_key($this->criteria(), ['sort' => true]);
     }
 
-    /** @return array<string, list<string|EnumRule|Exists>> */
+    /** @return array<string, list<string|EnumRule|Exists|Closure>> */
     public function rules(): array
     {
         $dateRules = ['bail', 'nullable', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before_or_equal:9999-12-31'];
@@ -37,6 +39,17 @@ class FilterInvoicesRequest extends FormRequest
             'customer_id' => [
                 'bail', 'nullable', 'integer', 'min:1',
                 Rule::exists('customers', 'id')->where('organization_id', (string) $this->route('organization')),
+            ],
+            'import_batch' => [
+                'bail', 'nullable', 'uuid',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $exists = InvoiceImport::query()->availableTo((int) $this->route('organization'), $this->user()->id)
+                        ->whereKey($value)->whereNull('rows')->exists();
+
+                    if (! $exists) {
+                        $fail('Ez az importeredmény nem érhető el.');
+                    }
+                },
             ],
             'invoice_number' => ['nullable', 'string', 'max:100'],
             'source' => ['nullable', Rule::enum(InvoiceSource::class)],
@@ -57,6 +70,7 @@ class FilterInvoicesRequest extends FormRequest
     {
         return [
             'customer_id.*' => 'Válassz ügyfelet a cég ügyfelei közül.',
+            'import_batch.*' => 'Ez az importeredmény nem érhető el.',
             'invoice_number.*' => 'A számlaszám legfeljebb 100 karakter lehet.',
             'source.*' => 'Válassz érvényes számlaforrást.',
             'status.*' => 'Válassz érvényes fizetési állapotot.',
