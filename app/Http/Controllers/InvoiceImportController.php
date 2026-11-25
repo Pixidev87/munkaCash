@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Invoices\DiscardInvoiceImportRequest;
+use App\Http\Requests\Invoices\DownloadInvoiceTemplateRequest;
 use App\Http\Requests\Invoices\UploadInvoiceCsvRequest;
 use App\Models\Customer;
 use App\Models\InvoiceImport;
@@ -63,13 +64,14 @@ class InvoiceImportController extends Controller
         ]);
     }
 
-    public function template(Request $request, string $organization): StreamedResponse
+    public function template(DownloadInvoiceTemplateRequest $request, string $organization): StreamedResponse
     {
         $request->user()->findActiveOrganization($organization);
+        $customerId = (int) ($request->validated('customer_id') ?? 1);
 
         return response()->streamDownload(
-            static function (): void {
-                echo InvoiceCsvParser::HEADER."\r\n1;00042;2026-12-01;HUF;120000\r\n";
+            static function () use ($customerId): void {
+                echo InvoiceCsvParser::HEADER."\r\n{$customerId};00042;2026-12-01;HUF;120000\r\n";
             },
             'munkacash-szamlaimport.csv',
             ['Content-Type' => 'text/csv; charset=UTF-8'],

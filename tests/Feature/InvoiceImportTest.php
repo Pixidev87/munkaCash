@@ -54,6 +54,20 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoices', 1);
     }
 
+    public function test_template_uses_only_a_customer_from_the_selected_company(): void
+    {
+        [$company, $user] = $this->createCompany();
+        [, , $foreign] = $this->createCompany();
+        $customer = $company->customers()->create(['display_name' => 'Második helyi ügyfél']);
+        $template = route('organizations.invoice-imports.template', $company);
+        $this->actingAs($user)->get($template.'?customer_id='.$customer->id)
+            ->assertDownload('munkacash-szamlaimport.csv')
+            ->assertStreamedContent(InvoiceCsvParser::HEADER."\r\n{$customer->id};00042;2026-12-01;HUF;120000\r\n");
+        $upload = route('organizations.invoice-imports.create', $company);
+        $this->from($upload)->get($template.'?customer_id='.$foreign)
+            ->assertRedirect($upload)->assertSessionHasErrors('customer_id');
+    }
+
     public function test_invalid_rows_and_duplicate_numbers_block_the_entire_batch(): void
     {
         [$company, $user, $customer] = $this->createCompany();
