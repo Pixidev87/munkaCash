@@ -143,6 +143,35 @@ class ReminderPreviewTest extends TestCase
             ->where('message', null));
     }
 
+    public function test_preview_waits_until_after_the_adjusted_deadline_in_budapest(): void
+    {
+        $this->travelTo(Carbon::parse('2026-12-28 22:59:59', 'UTC'));
+        [$company, $user, $invoice] = $this->makeInvoice();
+        $invoice->forceFill(['due_date' => '2026-12-24'])->save();
+        $this->checkBalance($invoice, 80_000);
+        $this->confirmAddress($invoice);
+        $url = route('organizations.invoices.reminder-preview', [$company, $invoice]);
+
+        $this->actingAs($user)->get($url)->assertInertia(fn (Assert $page) => $page
+            ->where('dueDate', '2026-12-24')
+            ->where('effectiveDueDate', '2026-12-28')
+            ->where('blockers', ['A számla fizetési határideje még nem járt le.'])
+            ->where('message', null));
+
+        $this->travel(1)->second();
+        $this->get($url)->assertInertia(fn (Assert $page) => $page
+            ->where('effectiveDueDate', '2026-12-28')
+            ->has('blockers', 0)
+            ->where('message.recipient', 'billing@example.test'));
+
+        $invoice->forceFill(['due_date' => '2027-01-02'])->save();
+        config(['reminder-calendar.2027' => null]);
+        $this->get($url)->assertInertia(fn (Assert $page) => $page
+            ->where('effectiveDueDate', null)
+            ->where('blockers', ['A fizetési határidőhöz még nincs ellenőrzött munkanaptár.'])
+            ->where('message', null));
+    }
+
     public function test_another_company_cannot_access_the_preview_or_change_the_recipient(): void
     {
         [$company, $user, $invoice] = $this->makeInvoice();

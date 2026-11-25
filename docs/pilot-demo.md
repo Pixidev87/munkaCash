@@ -23,3 +23,9 @@ A parancs kiírja a cégek azonosítóit, a három bejelentkezéshez tartozó eg
 4. Tesztlevélhez a Hárs Műhely tulajdonosa engedélyezheti az emlékeztetőket és jóváhagyhatja az első levélelőnézetet. A tesztküldést a munkanaptár és a 30 perces jóváhagyási ablak szabályozza. A feldolgozáshoz az ütemező és a `reminder-tests` sorhoz tartozó feldolgozó fusson. A fogadott tesztlevél a helyi Mailpit felületén ellenőrizhető.
 
 A demó létrehozásakor mindkét cég küldése szünetel, jóváhagyás és küldési feladat nem keletkezik. A teszt a munkatársi tagság visszavonása utáni hozzáférésvesztést is ellenőrzi.
+
+## Határidő és munkanaptár
+
+Az emlékeztető előnézete a számla eredeti dátumát mutatja. Ha a dátum munkaszüneti vagy pihenőnapra esik, külön megjelenik a következő magyar munkanap. A jóváhagyás az így számított nap után válik elérhetővé. A tesztküldésre továbbra is a küldési időablak vonatkozik.
+
+A pilot jelenleg a `config/reminder-calendar.php` fájlban rögzített 2026-os munkanaptárat használja. Ha a dátum számításához vagy a küldési időablakhoz hiányzik az érintett év ellenőrzött naptára, az adott művelet blokkolt.
