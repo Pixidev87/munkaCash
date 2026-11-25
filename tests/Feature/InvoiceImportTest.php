@@ -399,6 +399,22 @@ class InvoiceImportTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('import_batch');
     }
 
+    public function test_import_preview_resolves_only_customer_names_from_the_selected_company(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        [, , $foreign] = $this->createCompany();
+        $displayName = $company->customers()->findOrFail($customer)->display_name;
+        $this->actingAs($user);
+        $batch = $this->upload($company, "{$customer};LOCAL;2026-12-01;HUF;120000
+{$foreign};FOREIGN;2026-12-01;HUF;120000");
+
+        $this->get(route('organizations.invoice-imports.show', [$company, $batch]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('rows.0.customerName', $displayName)
+                ->where('rows.1.customerName', null)
+                ->where('rows.1.status', 'invalid'));
+    }
+
     /** @return array{Organization, User, int} */
     private function createCompany(): array
     {
