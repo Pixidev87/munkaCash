@@ -18,9 +18,16 @@ const localDate = new Intl.DateTimeFormat('hu-HU', {
     timeZone: 'Europe/Budapest',
 });
 
+const huf = new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    maximumFractionDigits: 0,
+});
+
 export default function OrganizationPage({
     name,
     organizationId,
+    balanceSummary,
     remindersEnabled,
     canManageReminders,
     canManageMembers,
@@ -30,6 +37,11 @@ export default function OrganizationPage({
 }: {
     name: string;
     organizationId: string;
+    balanceSummary: {
+        outstanding: string;
+        disputed: string;
+        unchecked: number;
+    } | null;
     remindersEnabled: boolean;
     canManageReminders: boolean;
     canManageMembers: boolean;
@@ -66,6 +78,37 @@ export default function OrganizationPage({
                             Az exportálási időszak lejárt.
                         </p>
                     )}
+                </section>
+            )}
+            {balanceSummary && (
+                <section className="w-full space-y-3 rounded-xl border p-4">
+                    <h2 className="font-semibold">Kintlévőségek összesítése</h2>
+                    <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                        <div>
+                            <dt className="text-muted-foreground">
+                                Ellenőrzött, nem vitatott
+                            </dt>
+                            <dd className="mt-1 font-semibold">
+                                {huf.format(BigInt(balanceSummary.outstanding))}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="text-muted-foreground">
+                                Vitatott, ellenőrzött
+                            </dt>
+                            <dd className="mt-1 font-semibold">
+                                {huf.format(BigInt(balanceSummary.disputed))}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="text-muted-foreground">
+                                Ellenőrzésre vár
+                            </dt>
+                            <dd className="mt-1 font-semibold">
+                                {balanceSummary.unchecked} számla
+                            </dd>
+                        </div>
+                    </dl>
                 </section>
             )}
             {(!closeout || closeout.exportAvailable) && (
