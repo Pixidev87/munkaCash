@@ -38,10 +38,10 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
+            'busy_timeout' => env('APP_ENV') === 'closed-pilot' ? 10_000 : null,
+            'journal_mode' => env('APP_ENV') === 'closed-pilot' ? 'wal' : null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'transaction_mode' => env('APP_ENV') === 'closed-pilot' ? 'IMMEDIATE' : 'DEFERRED',
         ],
 
         'mysql' => [
