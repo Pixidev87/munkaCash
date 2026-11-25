@@ -92,6 +92,22 @@ class OrganizationAccessLogFilterTest extends TestCase
         $this->actingAs($owner)->get($log)->assertGone();
     }
 
+    public function test_company_overview_offers_the_log_link_only_to_eligible_owners(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->ownerOf($company);
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
+        $page = route('organizations.show', $company);
+
+        $this->actingAs($member)->get($page)->assertInertia(fn (Assert $page) => $page->where('canViewAccessLog', false));
+        $this->actingAs($owner)->get($page)->assertInertia(fn (Assert $page) => $page->where('canViewAccessLog', true));
+        $this->post(route('organizations.closeout', $company), ['confirm' => true])->assertRedirect();
+        $this->get($page)->assertInertia(fn (Assert $page) => $page->where('canViewAccessLog', true));
+        $this->travel(30)->days();
+        $this->get($page)->assertInertia(fn (Assert $page) => $page->where('canViewAccessLog', false));
+    }
+
     private function ownerOf(Organization $company): User
     {
         $owner = User::factory()->create();

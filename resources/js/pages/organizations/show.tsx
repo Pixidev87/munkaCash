@@ -4,6 +4,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import {
+    accessLog,
     closeout as startCloseout,
     reminderDeliverySettings,
 } from '@/routes/organizations';
@@ -33,6 +34,7 @@ export default function OrganizationPage({
     canManageReminders,
     canManageMembers,
     canExportData,
+    canViewAccessLog,
     closeout,
     canStartCloseout,
 }: {
@@ -49,6 +51,7 @@ export default function OrganizationPage({
     canManageReminders: boolean;
     canManageMembers: boolean;
     canExportData: boolean;
+    canViewAccessLog: boolean;
     canStartCloseout: boolean;
     closeout: { exportUntil: string | null; exportAvailable: boolean } | null;
 }) {
@@ -244,6 +247,13 @@ export default function OrganizationPage({
                 <Button asChild variant="outline">
                     <Link href={members(organizationId)}>
                         Munkatársak kezelése
+                    </Link>
+                </Button>
+            )}
+            {canViewAccessLog && (
+                <Button asChild variant="outline">
+                    <Link href={accessLog(organizationId)}>
+                        Hozzáférési napló
                     </Link>
                 </Button>
             )}
