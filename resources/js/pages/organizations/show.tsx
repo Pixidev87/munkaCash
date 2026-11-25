@@ -7,6 +7,7 @@ import {
     closeout as startCloseout,
     reminderDeliverySettings,
 } from '@/routes/organizations';
+import { index as customerList } from '@/routes/organizations/customers';
 import { customers, invoices } from '@/routes/organizations/exports';
 import { index } from '@/routes/organizations/invoices';
 import { index as members } from '@/routes/organizations/members';
@@ -139,6 +140,11 @@ export default function OrganizationPage({
                     <Button asChild>
                         <Link href={index(organizationId)}>
                             Számlák megnyitása
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href={customerList(organizationId)}>
+                            Ügyfelek megnyitása
                         </Link>
                     </Button>
                     <section className="w-full space-y-3 rounded-xl border p-4">
