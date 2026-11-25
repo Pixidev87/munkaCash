@@ -25,10 +25,10 @@ bash bin/pilot worker
 bash bin/pilot scheduler
 ```
 
-| Felület | Helyi cím |
-| --- | --- |
+| Felület   | Helyi cím             |
+| --------- | --------------------- |
 | MunkaCash | http://127.0.0.1:8088 |
-| Mailpit | http://127.0.0.1:8026 |
+| Mailpit   | http://127.0.0.1:8026 |
 
 A portok a `PILOT_WEB_PORT`, `PILOT_MAIL_PORT` és `PILOT_SMTP_PORT` változóval módosíthatók. Az SMTP alapértelmezett portja 1026. A meglévő munkanaptár és a 30 perces jóváhagyási ablak a pilotban is érvényes. A [fiktív adatos kipróbálás](pilot-demo.md#kipróbálás) leírja a két cég és a három tesztfiók használatát.
 
