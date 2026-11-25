@@ -186,7 +186,7 @@ class InvoiceImportController extends Controller
                 }
 
                 $batch->update([
-                    ...$service->import($company, $rows),
+                    ...$service->import($company, $batch, $rows),
                     'rows' => null,
                     'expires_at' => now()->addDays(30),
                 ]);

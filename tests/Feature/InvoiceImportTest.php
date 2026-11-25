@@ -351,6 +351,24 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoice_imports', 0);
     }
 
+    public function test_import_origin_is_set_only_once_and_pruning_a_receipt_preserves_the_invoice(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user);
+        $row = "{$customer};ORIGIN-42;2026-12-01;HUF;120000";
+        $original = $this->upload($company, $row);
+        $this->confirm($company, $original)->assertSessionHasNoErrors();
+        $repeat = $this->upload($company, $row);
+        $this->confirm($company, $repeat)->assertSessionHasNoErrors();
+        $invoice = $company->invoices()->sole();
+
+        $this->assertSame($original->id, $invoice->invoice_import_id);
+        $original->update(['expires_at' => now()]);
+        $this->artisan('model:prune', ['--model' => [InvoiceImport::class]])->assertSuccessful();
+        $this->assertNull($invoice->refresh()->invoice_import_id);
+        $this->assertSame('csv', $invoice->source);
+    }
+
     /** @return array{Organization, User, int} */
     private function createCompany(): array
     {

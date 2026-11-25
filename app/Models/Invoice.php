@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $customer_id
  * @property int $organization_id
+ * @property string|null $invoice_import_id
  * @property string $source
  * @property string $currency
  * @property string $invoice_number
@@ -49,6 +50,12 @@ class Invoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /** @return BelongsTo<InvoiceImport, $this> */
+    public function importBatch(): BelongsTo
+    {
+        return $this->belongsTo(InvoiceImport::class, 'invoice_import_id');
     }
 
     /** @return BelongsTo<User, $this> */
