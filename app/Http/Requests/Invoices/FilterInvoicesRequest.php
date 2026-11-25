@@ -16,6 +16,8 @@ class FilterInvoicesRequest extends FormRequest
     /** @return array<string, list<string|EnumRule|Exists>> */
     public function rules(): array
     {
+        $dateRules = ['bail', 'nullable', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before_or_equal:9999-12-31'];
+
         return [
             'customer_id' => [
                 'bail', 'nullable', 'integer', 'min:1',
@@ -28,6 +30,8 @@ class FilterInvoicesRequest extends FormRequest
             'awaiting_balance' => ['nullable', 'in:1'],
             'billing_unconfirmed' => ['nullable', 'in:1'],
             'overdue' => ['nullable', 'in:1'],
+            'due_from' => $dateRules,
+            'due_to' => $this->filled('due_from') ? [...$dateRules, 'after_or_equal:due_from'] : $dateRules,
             'sort' => ['nullable', 'in:due_asc,due_desc,outstanding_desc'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
@@ -45,6 +49,8 @@ class FilterInvoicesRequest extends FormRequest
             'billing_unconfirmed.*' => 'A pénzügyi cím szűrője érvénytelen.',
             'overdue.*' => 'A lejárt számlák szűrője érvénytelen.',
             'disputed.*' => 'A vitatott számlák szűrője érvénytelen.',
+            'due_from.*' => 'Adj meg érvényes kezdőnapot.',
+            'due_to.*' => 'Adj meg érvényes zárónapot, amely nem előzi meg a kezdőnapot.',
             'sort.*' => 'Válassz érvényes rendezési sorrendet.',
             'page.*' => 'Az oldalszám legyen pozitív egész szám.',
         ];

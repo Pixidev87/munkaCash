@@ -26,7 +26,7 @@ class InvoiceController extends Controller
     public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed', 'sort']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to']);
         [$sortColumn, $sortDirection] = match ($filters['sort'] ?? null) {
             'due_asc' => ['due_date', 'asc'],
             'due_desc' => ['due_date', 'desc'],
@@ -45,6 +45,8 @@ class InvoiceController extends Controller
                 ->where(fn (Builder $balance) => $balance->whereNull('status_checked_at')->orWhereNull('outstanding_amount')))
             ->when(isset($filters['billing_unconfirmed']), fn ($query) => $query
                 ->whereIn('customer_id', $company->customers()->withoutConfirmedBillingAddress()->select('id')))
+            ->when(isset($filters['due_from']), fn ($query) => $query->whereDate('due_date', '>=', $filters['due_from']))
+            ->when(isset($filters['due_to']), fn ($query) => $query->whereDate('due_date', '<=', $filters['due_to']))
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->orderBy($sortColumn, $sortDirection)
             ->when($sortColumn !== 'id', fn ($query) => $query->latest('id'))
@@ -88,6 +90,8 @@ class InvoiceController extends Controller
                 'disputed' => isset($filters['disputed']),
                 'overdue' => isset($filters['overdue']),
                 'awaitingBalance' => isset($filters['awaiting_balance']),
+                'dueFrom' => $filters['due_from'] ?? '',
+                'dueTo' => $filters['due_to'] ?? '',
                 'sort' => $filters['sort'] ?? '',
                 'billingUnconfirmed' => isset($filters['billing_unconfirmed']),
             ],

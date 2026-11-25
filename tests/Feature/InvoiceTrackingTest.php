@@ -249,7 +249,7 @@ class InvoiceTrackingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('invoices.data', 1)
                 ->where('invoices.data.0.id', (string) $matching->id)
-                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'customerId' => '', 'disputed' => true, 'overdue' => false, 'awaitingBalance' => false, 'billingUnconfirmed' => false, 'sort' => '']));
+                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'customerId' => '', 'disputed' => true, 'overdue' => false, 'awaitingBalance' => false, 'billingUnconfirmed' => false, 'sort' => '', 'dueFrom' => '', 'dueTo' => '']));
         $this->get($route.'?status=paid&disputed=1')
             ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
 
@@ -323,6 +323,29 @@ class InvoiceTrackingTest extends TestCase
 
         $this->getJson(route('organizations.invoices.index', [$company, 'sort' => 'unknown']))
             ->assertUnprocessable()->assertJsonValidationErrors('sort');
+    }
+
+    public function test_invoice_deadline_filters_have_inclusive_optional_bounds(): void
+    {
+        $company = Organization::factory()->create();
+        $user = User::factory()->create();
+        $user->organizations()->attach($company, ['status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $second = $invoice->replicate()->forceFill(['invoice_number' => '00043', 'due_date' => '2026-12-02']);
+        $second->save();
+        $this->actingAs($user);
+        $route = 'organizations.invoices.index';
+
+        $this->get(route($route, [$company, 'due_to' => '2026-12-01']))
+            ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 1)
+                ->where('filters.dueTo', '2026-12-01')->where('invoices.data.0.number', '00042'));
+        $this->get(route($route, [$company, 'due_from' => '2026-12-02', 'due_to' => '2026-12-02']))
+            ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 1)
+                ->where('filters.dueFrom', '2026-12-02')->where('invoices.data.0.number', '00043'));
+        $this->getJson(route($route, [$company, 'due_from' => '2026-12-02', 'due_to' => '2026-12-01']))
+            ->assertUnprocessable()->assertJsonValidationErrors('due_to');
+        $this->getJson(route($route, [$company, 'due_from' => '2026-02-30']))
+            ->assertUnprocessable()->assertJsonValidationErrors('due_from');
     }
 
     public function test_invoice_pagination_preserves_applied_filters(): void
