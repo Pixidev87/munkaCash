@@ -63,6 +63,7 @@ class InvoiceImportTest extends TestCase
             "{$customer};00002;2026-02-30;EUR;100.5",
             "{$customer};00003;2026-12-01;HUF;120000",
             "{$customer};00003;2026-12-01;HUF;130000",
+            '',
             "{$customer};\"00004;2026-12-01;HUF;40000",
         ]));
 
@@ -71,9 +72,19 @@ class InvoiceImportTest extends TestCase
                 ->where('rows.0.status', 'new')
                 ->where('rows.1.status', 'invalid')
                 ->where('rows.1.line', 3)
+                ->where('rows.1.errors.0.code', 'invalid_value')
+                ->where('rows.1.errors.0.column', 'due_date')
+                ->where('rows.1.errors.1.column', 'currency')
+                ->where('rows.1.errors.2.column', 'gross_amount')
                 ->where('rows.2.status', 'conflict')
+                ->where('rows.2.errors.0.code', 'duplicate_invoice_number')
+                ->where('rows.2.errors.0.column', 'invoice_number')
+                ->where('rows.2.errors.0.message', 'Ismétlődő számlaszám ezekben a sorokban: 4, 5.')
                 ->where('rows.3.status', 'conflict')
-                ->where('rows.4.status', 'invalid'));
+                ->where('rows.4.status', 'invalid')
+                ->where('rows.4.line', 7)
+                ->where('rows.4.errors.0.code', 'row_structure')
+                ->where('rows.4.errors.0.column', null));
 
         $this->confirm($company, $batch)->assertSessionHasErrors('import');
         $this->assertDatabaseCount('invoices', 0);
@@ -92,6 +103,11 @@ class InvoiceImportTest extends TestCase
             'gross_amount' => 130000,
         ]);
         $invoice->forceFill(['outstanding_amount' => 0, 'status' => 'paid'])->save();
+
+        $this->get(route('organizations.invoice-imports.show', [$company, $batch]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('rows.1.errors.0.code', 'existing_invoice_mismatch')
+                ->where('rows.1.errors.0.column', 'gross_amount'));
 
         $this->confirm($company, $batch)->assertSessionHasErrors('import');
         $this->assertDatabaseCount('invoices', 1);
@@ -112,13 +128,35 @@ class InvoiceImportTest extends TestCase
         $url = route('organizations.invoice-imports.show', [$company, $batch]);
 
         $this->get($url)
-            ->assertInertia(fn (Assert $page) => $page->where('rows.0.status', 'invalid'));
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('rows.0.status', 'invalid')
+                ->where('rows.0.errors.0.code', 'customer_not_found')
+                ->where('rows.0.errors.0.column', 'customer_id'));
         $this->confirm($company, $batch)->assertSessionHasErrors('import');
 
         $this->actingAs($coworker)->get($url)->assertNotFound();
         $this->get(route('organizations.invoice-imports.show', [$other, $batch]))->assertNotFound();
         $this->confirm($company, $batch)->assertNotFound();
 
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
+    public function test_an_existing_batch_with_legacy_errors_remains_readable_and_blocked(): void
+    {
+        [$company, $user] = $this->createCompany();
+        $batch = InvoiceImport::create([
+            'organization_id' => $company->id,
+            'user_id' => $user->id,
+            'rows' => [['line' => 2, 'data' => null, 'errors' => ['Korábbi importhiba']]],
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $this->actingAs($user)->get(route('organizations.invoice-imports.show', [$company, $batch]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canImport', false)
+                ->where('rows.0.errors.0.code', 'legacy_row_error')
+                ->where('rows.0.errors.0.message', 'Korábbi importhiba'));
+        $this->confirm($company, $batch)->assertSessionHasErrors('import');
         $this->assertDatabaseCount('invoices', 0);
     }
 

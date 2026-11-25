@@ -11,10 +11,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * @phpstan-import-type CsvRow from InvoiceCsvParser
+ * @phpstan-import-type StoredCsvRow from InvoiceCsvParser
  *
  * @property string $id
- * @property list<CsvRow>|null $rows
+ * @property list<StoredCsvRow>|null $rows
  * @property int|null $created_count
  * @property int|null $unchanged_count
  * @property Carbon $expires_at

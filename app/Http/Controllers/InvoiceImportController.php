@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Invoices\UploadInvoiceCsvRequest;
 use App\Models\Customer;
 use App\Models\InvoiceImport;
 use App\Services\InvoiceCsvImport;
@@ -50,15 +51,10 @@ class InvoiceImportController extends Controller
         );
     }
 
-    public function store(Request $request, string $organization, InvoiceCsvParser $parser): RedirectResponse
+    public function store(UploadInvoiceCsvRequest $request, string $organization, InvoiceCsvParser $parser): RedirectResponse
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
-        $request->validate([
-            'csv' => ['required', 'file', 'extensions:csv', 'max:'.InvoiceCsvParser::MAX_BYTES_KIB],
-        ], [
-            'csv.*' => 'Legfeljebb '.InvoiceCsvParser::MAX_BYTES_KIB.' KiB méretű .csv fájlt tölts fel.',
-        ]);
 
         $file = $request->file('csv');
         abort_unless($file instanceof UploadedFile, 422);
