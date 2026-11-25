@@ -57,6 +57,12 @@ class Invoice extends Model
         return $this->belongsTo(User::class, 'checked_by');
     }
 
+    /** @return HasMany<InvoiceBalanceEvent, $this> */
+    public function balanceEvents(): HasMany
+    {
+        return $this->hasMany(InvoiceBalanceEvent::class);
+    }
+
     /** @return HasMany<ReminderApproval, $this> */
     public function reminderApprovals(): HasMany
     {
