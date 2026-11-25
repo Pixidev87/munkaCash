@@ -248,6 +248,7 @@ class InvoiceImportTest extends TestCase
         $this->get(route('organizations.invoice-imports.index', $company))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('organizations/invoice-import-history')
+                ->where('counts', ['completed' => 1, 'pending' => 1])
                 ->has('imports.data', 2)
                 ->where('imports.data.0.id', $pending->id)
                 ->where('imports.data.0.created', null)
@@ -255,7 +256,7 @@ class InvoiceImportTest extends TestCase
                 ->where('imports.data.1.id', $completed->id)
                 ->where('imports.data.1.created', 1));
         $this->get(route('organizations.invoice-imports.index', [$company, 'status' => 'pending']))
-            ->assertInertia(fn (Assert $page) => $page->where('status', 'pending')
+            ->assertInertia(fn (Assert $page) => $page->where('status', 'pending')->where('counts.pending', 1)->where('counts.completed', 1)
                 ->has('imports.data', 1)->where('imports.data.0.id', $pending->id));
         $this->get(route('organizations.invoice-imports.index', [$company, 'status' => 'completed']))
             ->assertInertia(fn (Assert $page) => $page->has('imports.data', 1)->where('imports.data.0.id', $completed->id));

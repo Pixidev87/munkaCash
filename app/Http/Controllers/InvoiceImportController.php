@@ -29,7 +29,13 @@ class InvoiceImportController extends Controller
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
         $status = $request->validated('status');
-        $imports = $this->availableBatches($company->id, $user->id)
+        $available = $this->availableBatches($company->id, $user->id);
+        $query = (clone $available)->toBase();
+        $rowColumn = $query->getGrammar()->wrap('rows');
+        $counts = $query
+            ->selectRaw("COUNT(CASE WHEN {$rowColumn} IS NULL THEN 1 END) AS completed, COUNT(CASE WHEN {$rowColumn} IS NOT NULL THEN 1 END) AS pending")
+            ->first();
+        $imports = $available
             ->when($status === 'pending', fn ($query) => $query->whereNotNull('rows'))
             ->when($status === 'completed', fn ($query) => $query->whereNull('rows'))
             ->select(['id', 'created_at', 'expires_at', 'created_count', 'unchanged_count'])
@@ -48,6 +54,10 @@ class InvoiceImportController extends Controller
         return Inertia::render('organizations/invoice-import-history', [
             'organizationId' => (string) $company->id,
             'status' => $status,
+            'counts' => [
+                'completed' => (int) ($counts->completed ?? 0),
+                'pending' => (int) ($counts->pending ?? 0),
+            ],
             'imports' => $imports,
         ]);
     }
