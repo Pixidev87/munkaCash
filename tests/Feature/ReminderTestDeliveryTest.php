@@ -315,6 +315,39 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'blocked']);
     }
 
+    public function test_correcting_the_deadline_blocks_waiting_delivery_and_preserves_the_checked_balance(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        [, , $foreignInvoice, $foreignApproval] = $this->approvedDraft();
+        $otherDelivery = $foreignApproval->testDelivery()->create(['status' => 'pending']);
+        $url = route('organizations.invoices.deadline.update', [$company, $invoice]);
+        $bag = 'deadline-'.$invoice->id;
+        $this->actingAs($owner)->patch($url, ['due_date' => '2026-02-30', 'revision' => 0])
+            ->assertSessionHasErrorsIn($bag, 'due_date');
+        $this->patch($url, ['due_date' => '2026-11-30', 'revision' => 1])
+            ->assertSessionHasErrorsIn($bag, 'revision');
+        $this->patch(route('organizations.invoices.deadline.update', [$company, $foreignInvoice]), [
+            'due_date' => '2026-11-30', 'revision' => 0,
+        ])->assertNotFound();
+        $this->patch($url, ['due_date' => $invoice->due_date->toDateString(), 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'pending']);
+
+        $this->patch($url, ['due_date' => '2026-11-30', 'revision' => 0])->assertSessionHasNoErrors();
+
+        $invoice->refresh();
+        $this->assertSame('2026-11-30', $invoice->due_date->toDateString());
+        $this->assertSame(80_000, $invoice->outstanding_amount);
+        $this->assertSame(1, $invoice->revision);
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'invoice_deadline_changed',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'pending']);
+        $this->get(route('organizations.invoices.reminder-preview', [$company, $invoice]))
+            ->assertInertia(fn (Assert $page) => $page->where('approval.status', 'invalidated'));
+    }
+
     public function test_rechecking_the_same_balance_blocks_the_old_delivery_for_that_invoice(): void
     {
         [$company, $owner, $invoice, $approval] = $this->approvedDraft();

@@ -4,6 +4,7 @@ use App\Http\Controllers\BillingContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceBalanceHistoryController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoiceDeadlineController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationAccessLogController;
 use App\Http\Controllers\OrganizationCloseoutController;
@@ -116,6 +117,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::delete('invoices/{invoice}/balance', [InvoiceController::class, 'resetBalance'])
                     ->whereNumber('invoice')
                     ->name('invoices.balance.destroy');
+                Route::patch('invoices/{invoice}/deadline', [InvoiceDeadlineController::class, 'update'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.deadline.update');
                 Route::patch('invoices/{invoice}/dispute', [InvoiceController::class, 'updateDispute'])
                     ->whereNumber('invoice')
                     ->name('invoices.dispute.update');

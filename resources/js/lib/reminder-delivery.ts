@@ -11,6 +11,7 @@ export const deliveryReasons: Record<string, string> = {
     organization_paused: 'A cég emlékeztetői szünetelnek.',
     balance_unverified: 'A számla fennálló összege új ellenőrzést igényel.',
     balance_rechecked: 'A számla egyenlegét újra ellenőrizték.',
+    invoice_deadline_changed: 'A számla fizetési határideje megváltozott.',
     invoice_disputed: 'A számla vitatott.',
     customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
     billing_contact_changed: 'Az ügyfél pénzügyi e-mail-címe megváltozott.',

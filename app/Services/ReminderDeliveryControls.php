@@ -27,6 +27,8 @@ class ReminderDeliveryControls
 
     public const string DELIVERY_CANCELLED = 'delivery_cancelled';
 
+    public const string INVOICE_DEADLINE_CHANGED = 'invoice_deadline_changed';
+
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {
