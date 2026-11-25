@@ -74,7 +74,7 @@ case ${1:-} in
         fi
         python3 bin/pilot-db.py restore "$database" "$key" "$2" "$3"
         ;;
-    demo|web|mail|scheduler|worker|check)
+    demo|web|mail|scheduler|worker|check|tick)
         if [[ ! -s "$key" || ! -f "$database" ]]; then
             echo 'Run bash bin/pilot init before starting the pilot.' >&2
             exit 2
@@ -93,12 +93,13 @@ case ${1:-} in
                 exec "${clean_env[@]}" mailpit --listen "127.0.0.1:$mail_port" --smtp "127.0.0.1:$smtp_port" \
                     --database "$state/mailpit.sqlite" --smtp-allowed-recipients '(?i)\.test$'
                 ;;
+            tick) pilot_php artisan schedule:run ;;
             scheduler) pilot_php artisan schedule:work ;;
             worker) pilot_php artisan queue:work database --queue=reminder-tests --sleep=1 --timeout=40 --tries=1 ;;
         esac
         ;;
     *)
-        echo 'Usage: bash bin/pilot {init|demo|web|mail|scheduler|worker|check|backup|restore}' >&2
+        echo 'Usage: bash bin/pilot {init|demo|web|mail|scheduler|worker|check|tick|backup|restore}' >&2
         exit 2
         ;;
 esac

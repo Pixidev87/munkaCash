@@ -50,3 +50,17 @@ PILOT_STATE_DIR="$HOME/.munkacash-restore-proba" bash bin/pilot init
 ```
 
 A visszaállítás csak új pilotpéldányba ír. Az eredeti példány leállítása nélkül külön portokat kell választani a próbához. A helyreállított cégek küldése szünetel, a várakozó tesztküldések leállnak, a félbeszakadt SMTP-küldések bizonytalan állapotot kapnak, a háttérsor és a korábbi bejelentkezések kiürülnek. A próba célja a számlák, az importelőzmények és a jogosultságok ellenőrzése. Az új példány Mailpit-postafiókja üres.
+
+## Ismételhető átvételi próba
+
+A próba saját ideiglenes könyvtárat és szabad helyi portokat nyit. A használt időpont a próbafolyamatokra korlátozódik, így munkaidőn kívül is ellenőrizhető a valódi SMTP-átadás. Az import és az ismételt feltöltés Chromiumban fut. A próba ellenőrzi a másik céghez tartozó fiók elkülönítését, a címzettet, a levél összegét és az üzemeltetési ellenőrzést. A mentésből új példányban ellenőrzi, hogy a számlák és tagságok megmaradtak, a várakozó küldés leállt, és az előző munkamenetek eltűntek.
+
+Előkészített Python virtuális környezetből, a frontend build után:
+
+```sh
+python -m pip install playwright
+python -m playwright install chromium
+python bin/pilot-smoke.py
+```
+
+Meglévő Chromium esetén a bináris a `PILOT_CHROMIUM_PATH` változóval adható meg. Ha a próba sikeres, a végén `PASS` jelenik meg.
