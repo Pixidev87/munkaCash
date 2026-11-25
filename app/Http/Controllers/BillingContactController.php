@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Customers\ConfirmBillingContactRequest;
+use App\Http\Requests\Customers\UpdateBillingContactRequest;
 use App\Models\Customer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,27 +33,21 @@ class BillingContactController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $organization, string $customer): RedirectResponse
+    public function update(UpdateBillingContactRequest $request, string $organization, string $customer): RedirectResponse
     {
         $contact = $this->customer($request, $organization, $customer);
-        $data = $request->validateWithBag('address', [
-            'billing_email' => ['present', 'nullable', 'email:rfc', 'max:254'],
-            'revision' => ['required', 'integer', 'min:0'],
-        ], [
-            'billing_email.email' => 'Adj meg érvényes e-mail-címet.',
-            'billing_email.max' => 'Az e-mail-cím legfeljebb 254 karakter lehet.',
-        ]);
-        $revision = (int) $data['revision'];
+        $email = $request->validated('billing_email');
+        $revision = (int) $request->validated('revision');
 
         if ($contact->billing_email_revision !== $revision) {
             $this->changedContact('address');
         }
 
-        if ($contact->billing_email !== $data['billing_email']) {
+        if ($contact->billing_email !== $email) {
             $updated = Customer::query()->whereKey($contact->id)
                 ->where('billing_email_revision', $revision)
                 ->increment('billing_email_revision', 1, [
-                    'billing_email' => $data['billing_email'],
+                    'billing_email' => $email,
                     'billing_email_confirmed_at' => null,
                     'billing_email_confirmed_by' => null,
                 ]);
@@ -64,13 +60,10 @@ class BillingContactController extends Controller
         return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);
     }
 
-    public function confirm(Request $request, string $organization, string $customer): RedirectResponse
+    public function confirm(ConfirmBillingContactRequest $request, string $organization, string $customer): RedirectResponse
     {
         $contact = $this->customer($request, $organization, $customer);
-        $data = $request->validateWithBag('confirmation', [
-            'revision' => ['required', 'integer', 'min:0'],
-        ]);
-        $revision = (int) $data['revision'];
+        $revision = (int) $request->validated('revision');
 
         if ($contact->billing_email_revision !== $revision) {
             $this->changedContact('confirmation');
