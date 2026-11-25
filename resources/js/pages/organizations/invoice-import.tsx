@@ -1,4 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ export default function InvoiceImportPage({
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
     }>().props;
+    const [templateCustomer, setTemplateCustomer] = useState('');
     return (
         <div className="w-full max-w-3xl space-y-6 p-4 sm:p-6">
             <Head title="CSV-import" />
@@ -63,13 +65,56 @@ export default function InvoiceImportPage({
                         <>
                             <p className="text-sm text-muted-foreground">
                                 UTF-8, pontosvesszővel tagolt CSV. Legfeljebb{' '}
-                                {maxRows} sor és {maxSizeKiB} KiB. A sablon
-                                mintasorában cseréld ki a customer_id mezőt a
-                                cég egy meglévő ügyfelének azonosítójára.
+                                {maxRows} sor és {maxSizeKiB} KiB. A
+                                mintaszámot, a határidőt és az összeget cseréld
+                                le a saját számlád adataira.
                             </p>
+                            {customers.length > 0 && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="template-customer">
+                                        Ügyfél a CSV-mintához
+                                    </Label>
+                                    <select
+                                        id="template-customer"
+                                        value={templateCustomer}
+                                        onChange={(event) =>
+                                            setTemplateCustomer(
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    >
+                                        <option value="">
+                                            Általános minta
+                                        </option>
+                                        {customers.map((customer) => (
+                                            <option
+                                                key={customer.id}
+                                                value={customer.id}
+                                            >
+                                                {customer.display_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            {!templateCustomer && (
+                                <p className="text-sm text-muted-foreground">
+                                    Az általános mintában a customer_id mezőt is
+                                    cseréld le a megfelelő ügyfél azonosítójára.
+                                </p>
+                            )}
                             <Button asChild variant="outline">
                                 <a
-                                    href={template(organization.id).url}
+                                    href={
+                                        template(organization.id, {
+                                            query: {
+                                                customer_id:
+                                                    templateCustomer ||
+                                                    undefined,
+                                            },
+                                        }).url
+                                    }
                                     download
                                 >
                                     Sablon letöltése
