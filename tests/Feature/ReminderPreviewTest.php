@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BillingContactAction;
+use App\Models\CustomerBillingContactEvent;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\User;
@@ -88,6 +90,41 @@ class ReminderPreviewTest extends TestCase
             'billing_email_confirmed_by' => null,
             'billing_email_confirmed_at' => null,
         ]);
+    }
+
+    public function test_billing_contact_history_records_only_changes_without_addresses_and_expires(): void
+    {
+        [$company, $user, $invoice] = $this->makeInvoice();
+        $customer = $invoice->customer;
+        $params = [$company, $customer];
+        $update = route('organizations.customers.billing-contact.update', $params);
+        $confirm = route('organizations.customers.billing-contact.confirm', $params);
+        $revoke = route('organizations.customers.billing-contact.revoke', $params);
+        $expired = $customer->billingContactEvents()->create([
+            'actor_id' => $user->id,
+            'action' => BillingContactAction::AddressChanged,
+            'occurred_at' => now()->subDays(91),
+        ]);
+
+        $this->actingAs($user)->patch($update, ['billing_email' => 'hidden@example.test', 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->patch($update, ['billing_email' => 'hidden@example.test', 'revision' => 1])
+            ->assertSessionHasNoErrors();
+        $this->post($confirm, ['revision' => 1])->assertSessionHasNoErrors();
+        $this->delete($revoke, ['revision' => 2])->assertSessionHasNoErrors();
+
+        $this->get(route('organizations.customers.billing-contact.edit', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('billingContactEvents', 3)
+                ->where('billingContactEvents.0.action', 'confirmation_revoked')
+                ->where('billingContactEvents.0.actor', $user->name)
+                ->where('billingContactEvents.1.action', 'confirmed')
+                ->where('billingContactEvents.2.action', 'address_changed')
+                ->missing('billingContactEvents.2.billing_email'));
+
+        $this->artisan('model:prune', ['--model' => [CustomerBillingContactEvent::class]])->assertSuccessful();
+        $this->assertModelMissing($expired);
+        $this->assertDatabaseCount('customer_billing_contact_events', 3);
     }
 
     public function test_preview_uses_the_verified_partial_balance_and_does_not_dispatch_mail(): void

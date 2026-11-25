@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CustomerBillingContactEvent;
 use App\Models\InvoiceBalanceEvent;
 use App\Models\InvoiceImport;
 use App\Models\OrganizationAccessEvent;
@@ -16,7 +17,13 @@ Artisan::command('inspire', function () {
 
 Schedule::command('model:prune', ['--model' => [InvoiceImport::class]])->everyTenMinutes();
 
-Schedule::command('model:prune', ['--model' => [ReminderApproval::class, OrganizationInvitation::class, OrganizationAccessEvent::class, InvoiceBalanceEvent::class]])->daily();
+Schedule::command('model:prune', ['--model' => [
+    ReminderApproval::class,
+    OrganizationInvitation::class,
+    OrganizationAccessEvent::class,
+    InvoiceBalanceEvent::class,
+    CustomerBillingContactEvent::class,
+]])->daily();
 
 Schedule::call(fn () => app(ReminderTestQueue::class)->dispatchPending())
     ->name('reminder-test-delivery')
