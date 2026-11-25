@@ -11,6 +11,7 @@ use App\Http\Requests\Invoices\UpdateInvoiceBalanceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Services\HungarianWorkCalendar;
 use App\Services\OverdueInvoices;
 use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderTestQueue;
@@ -23,7 +24,7 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
+    public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices, HungarianWorkCalendar $calendar): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
         $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to']);
@@ -58,6 +59,7 @@ class InvoiceController extends Controller
                 'customer' => $invoice->customer->display_name,
                 'customerId' => (string) $invoice->customer_id,
                 'dueDate' => $invoice->due_date->toDateString(),
+                'effectiveDueDate' => $calendar->effectiveDeadline($invoice->due_date)?->toDateString(),
                 'gross' => $invoice->gross_amount,
                 'outstanding' => $invoice->outstanding_amount,
                 'status' => $invoice->status->value,

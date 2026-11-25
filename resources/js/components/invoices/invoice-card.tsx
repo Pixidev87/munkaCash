@@ -29,6 +29,7 @@ export type Invoice = {
     customer: string;
     customerId: string;
     dueDate: string;
+    effectiveDueDate: string | null;
     gross: number;
     outstanding: number | null;
     status: keyof typeof invoiceStatusLabels;
@@ -97,12 +98,28 @@ export default function InvoiceCard({
             </div>
             <dl className="grid gap-2 text-sm sm:grid-cols-3">
                 <div>
-                    <dt className="text-muted-foreground">Határidő</dt>
+                    <dt className="text-muted-foreground">
+                        Rögzített határidő
+                    </dt>
                     <dd>
                         <time dateTime={invoice.dueDate}>
                             {invoice.dueDate}
                         </time>
                     </dd>
+                    {invoice.effectiveDueDate !== invoice.dueDate && (
+                        <dd className="text-muted-foreground">
+                            {invoice.effectiveDueDate ? (
+                                <>
+                                    Emlékeztetőnél figyelembe vett határidő{' '}
+                                    <time dateTime={invoice.effectiveDueDate}>
+                                        {invoice.effectiveDueDate}
+                                    </time>
+                                </>
+                            ) : (
+                                'Ehhez a naphoz nincs ellenőrzött munkanaptár.'
+                            )}
+                        </dd>
+                    )}
                 </div>
                 <div>
                     <dt className="text-muted-foreground">Bruttó összeg</dt>
