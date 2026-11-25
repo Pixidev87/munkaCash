@@ -121,6 +121,37 @@ class OrganizationBalanceSummaryTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('awaiting_balance');
     }
 
+    public function test_billing_address_filter_includes_missing_and_unconfirmed_addresses_and_combines_with_overdue(): void
+    {
+        $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
+        $company = Organization::factory()->create();
+        $other = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $checked = ['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()];
+        $this->invoices($other, [$checked]);
+        $this->invoices($company, [$checked, [...$checked, 'due_date' => '2026-12-03'], $checked, $checked]);
+        $unconfirmed = $company->customers()->create(['display_name' => 'Megerősítésre váró ügyfél']);
+        $unconfirmed->forceFill(['billing_email' => 'waiting@example.test'])->save();
+        $confirmed = $company->customers()->create(['display_name' => 'Megerősített ügyfél']);
+        $confirmed->forceFill(['billing_email' => 'confirmed@example.test', 'billing_email_confirmed_at' => now()])->save();
+        $company->invoices()->where('invoice_number', 'DEMO-2')->update(['customer_id' => $unconfirmed->id]);
+        $company->invoices()->where('invoice_number', 'DEMO-3')->update(['customer_id' => $confirmed->id]);
+
+        $params = ['organization' => $company, 'billing_unconfirmed' => 1];
+        $this->actingAs($member)->get(route('organizations.invoices.index', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.billingUnconfirmed', true)
+                ->has('invoices.data', 3));
+        $this->get(route('organizations.invoices.index', [...$params, 'overdue' => 1]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 2)
+                ->where('invoices.data.0.number', 'DEMO-2')
+                ->where('invoices.data.1.number', 'DEMO-0'));
+        $this->getJson(route('organizations.invoices.index', [...$params, 'billing_unconfirmed' => 0]))
+            ->assertUnprocessable()->assertJsonValidationErrors('billing_unconfirmed');
+    }
+
     private function invoices(Organization $company, array $rows): void
     {
         $customer = $company->customers()->create(['display_name' => 'Minta ügyfél']);
