@@ -37,3 +37,16 @@ A portok a `PILOT_WEB_PORT`, `PILOT_MAIL_PORT` és `PILOT_SMTP_PORT` változóva
 A folyamatok indítása után egy perc múlva futtasd a `bash bin/pilot check` parancsot. A parancs hibakóddal tér vissza, ha eltűnik az ütemező vagy a feldolgozó életjele, két percnél régebben feldolgozható feladat marad a sorban, vagy friss, bizonytalan SMTP-átadás látható. A parancs időzített helyi ellenőrzésből is futtatható. Az eredmény darabszámokat mutat, címzettek és levéltartalom nélkül.
 
 Bizonytalan átvételnél hasonlítsd össze a tesztküldési naplót a Mailpitben látható üzenetekkel. A feldolgozó ilyen esetben nem ismétli meg automatikusan a küldést.
+
+## Mentés és visszaállítási próba
+
+A mentéshez Python 3 szükséges. Az SQLite online mentési művelete az adatbázist működés közben is következetes pillanatképként menti. A Mailpit és az alkalmazáskulcs külön állomány. A `pilot.env` fájlt tartsd a mentéstől elkülönítve, mert tartalmazza a példány kulcsát.
+
+```sh
+bash bin/pilot backup "$HOME/munkacash-pilot-backup.sqlite"
+PILOT_STATE_DIR="$HOME/.munkacash-restore-proba" bash bin/pilot restore \
+    "$HOME/munkacash-pilot-backup.sqlite" "$HOME/.munkacash-closed-pilot/pilot.env"
+PILOT_STATE_DIR="$HOME/.munkacash-restore-proba" bash bin/pilot init
+```
+
+A visszaállítás csak új pilotpéldányba ír. Az eredeti példány leállítása nélkül külön portokat kell választani a próbához. A helyreállított cégek küldése szünetel, a várakozó tesztküldések leállnak, a félbeszakadt SMTP-küldések bizonytalan állapotot kapnak, a háttérsor és a korábbi bejelentkezések kiürülnek. A próba célja a számlák, az importelőzmények és a jogosultságok ellenőrzése. Az új példány Mailpit-postafiókja üres.
