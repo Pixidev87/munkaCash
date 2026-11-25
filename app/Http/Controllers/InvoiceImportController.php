@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Invoices\DiscardInvoiceImportRequest;
 use App\Http\Requests\Invoices\UploadInvoiceCsvRequest;
 use App\Models\Customer;
 use App\Models\InvoiceImport;
@@ -176,6 +177,17 @@ class InvoiceImportController extends Controller
         }
 
         return to_route('organizations.invoice-imports.show', [$organization, $import]);
+    }
+
+    public function destroy(DiscardInvoiceImportRequest $request, string $organization, string $import): RedirectResponse
+    {
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $batch = $this->availableBatches($company->id, $user->id)->lockForUpdate()->findOrFail($import);
+        abort_if($batch->rows === null, 409, 'A már megerősített import nem vethető el.');
+        $batch->deleteOrFail();
+
+        return to_route('organizations.invoice-imports.index', $company);
     }
 
     /** @return Builder<InvoiceImport> */
