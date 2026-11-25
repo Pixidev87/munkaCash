@@ -38,6 +38,7 @@ class OrganizationBalanceSummaryTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('balanceSummary', [
                 'outstanding' => '200000',
                 'overdue' => '200000',
+                'overdueWithoutConfirmedAddress' => 2,
                 'disputed' => '120000',
                 'unchecked' => 2,
             ]));
@@ -54,7 +55,7 @@ class OrganizationBalanceSummaryTest extends TestCase
 
         $this->actingAs($owner)->get($url)
             ->assertInertia(fn (Assert $page) => $page->where('balanceSummary', [
-                'outstanding' => '0', 'overdue' => '0', 'disputed' => '0', 'unchecked' => 0,
+                'outstanding' => '0', 'overdue' => '0', 'overdueWithoutConfirmedAddress' => 0, 'disputed' => '0', 'unchecked' => 0,
             ]));
 
         $this->invoices($company, [['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()]]);
@@ -143,11 +144,18 @@ class OrganizationBalanceSummaryTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('filters.billingUnconfirmed', true)
                 ->has('invoices.data', 3));
+        $this->get(route('organizations.show', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('balanceSummary.overdue', '360000')
+                ->where('balanceSummary.overdueWithoutConfirmedAddress', 2));
         $this->get(route('organizations.invoices.index', [...$params, 'overdue' => 1]))
             ->assertInertia(fn (Assert $page) => $page
                 ->has('invoices.data', 2)
                 ->where('invoices.data.0.number', 'DEMO-2')
                 ->where('invoices.data.1.number', 'DEMO-0'));
+        $unconfirmed->forceFill(['billing_email_confirmed_at' => now()])->save();
+        $this->get(route('organizations.show', $company))
+            ->assertInertia(fn (Assert $page) => $page->where('balanceSummary.overdueWithoutConfirmedAddress', 1));
         $this->getJson(route('organizations.invoices.index', [...$params, 'billing_unconfirmed' => 0]))
             ->assertUnprocessable()->assertJsonValidationErrors('billing_unconfirmed');
     }
