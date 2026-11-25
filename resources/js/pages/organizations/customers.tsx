@@ -1,6 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
+import { index } from '@/routes/organizations/customers';
 import { edit } from '@/routes/organizations/customers/billing-contact';
 import { index as invoices } from '@/routes/organizations/invoices';
 
@@ -20,8 +24,10 @@ type Customer = {
 export default function Customers({
     organization,
     customers,
+    filters,
 }: {
     organization: { id: string; name: string };
+    filters: { name: string };
     customers: {
         data: Customer[];
         prev_page_url: string | null;
@@ -38,6 +44,46 @@ export default function Customers({
             <p className="text-sm wrap-break-word text-muted-foreground">
                 {organization.name}
             </p>
+            <Form
+                key={JSON.stringify(filters)}
+                {...index.form(organization.id)}
+                errorBag="customerFilters"
+                className="space-y-3 rounded-xl border p-4"
+            >
+                {({ errors, processing }) => (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="customer-search">
+                                Keresés ügyfélnév alapján
+                            </Label>
+                            <Input
+                                id="customer-search"
+                                name="name"
+                                maxLength={255}
+                                defaultValue={filters.name}
+                            />
+                            <InputError message={errors.name} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                Keresés
+                            </Button>
+                            {filters.name && (
+                                <Link
+                                    className="text-sm underline"
+                                    href={index(organization.id)}
+                                >
+                                    Keresés törlése
+                                </Link>
+                            )}
+                        </div>
+                    </>
+                )}
+            </Form>
             {customers.data.length ? (
                 <ul className="divide-y rounded-xl border">
                     {customers.data.map((customer) => (
@@ -81,7 +127,9 @@ export default function Customers({
                 </ul>
             ) : (
                 <p className="text-sm text-muted-foreground">
-                    Ezen az oldalon nincs ügyfél.
+                    {filters.name
+                        ? 'Nincs a keresésnek megfelelő ügyfél.'
+                        : 'Ezen az oldalon nincs ügyfél.'}
                 </p>
             )}
             {(customers.prev_page_url || customers.next_page_url) && (
