@@ -57,6 +57,18 @@ class ReminderApprovalTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_approval_rejects_a_malformed_fingerprint_and_missing_or_invalid_previous_id(): void
+    {
+        [$company, $owner, $invoice] = $this->makeDraft();
+        $approve = route('organizations.invoices.reminder-approval', [$company, $invoice]);
+
+        $this->actingAs($owner)->post($approve, ['fingerprint' => ['bad']])
+            ->assertSessionHasErrors(['fingerprint', 'previous_approval_id']);
+        $this->post($approve, ['fingerprint' => str_repeat('a', 64), 'previous_approval_id' => 0])
+            ->assertSessionHasErrors('previous_approval_id');
+        $this->assertDatabaseCount('reminder_approvals', 0);
+    }
+
     public function test_stale_preview_is_rejected_and_a_changed_balance_invalidates_an_existing_approval(): void
     {
         [$company, $owner, $invoice] = $this->makeDraft();

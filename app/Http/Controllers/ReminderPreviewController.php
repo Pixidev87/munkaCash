@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Reminders\ApproveReminderRequest;
 use App\Services\ReminderApprovalStatus;
 use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderDeliveryTiming;
@@ -63,7 +64,7 @@ class ReminderPreviewController extends Controller
         ]);
     }
 
-    public function approve(Request $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status): RedirectResponse
+    public function approve(ApproveReminderRequest $request, string $organization, string $invoice, ReminderPreview $preview, ReminderApprovalStatus $status): RedirectResponse
     {
         $user = $request->user();
 
@@ -72,15 +73,10 @@ class ReminderPreviewController extends Controller
             $selected = $company->invoices()->lockForUpdate()->findOrFail($invoice);
             Gate::forUser($user)->authorize('approveReminder', $company);
 
-            $data = $request->validate([
-                'fingerprint' => ['required', 'regex:/\A[a-f0-9]{64}\z/'],
-                'previous_approval_id' => ['present', 'nullable', 'integer', 'min:1'],
-            ]);
-
             $customer = $company->customers()->lockForUpdate()->findOrFail($selected->customer_id);
             $selected->setRelation('customer', $customer);
             $fingerprint = $preview->prepare($company, $selected)['fingerprint'];
-            if ($fingerprint === null || ! hash_equals($fingerprint, $data['fingerprint']) || $selected->outstanding_amount === null) {
+            if ($fingerprint === null || ! hash_equals($fingerprint, $request->validated('fingerprint')) || $selected->outstanding_amount === null) {
                 $this->changedPreview();
             }
 
@@ -89,8 +85,8 @@ class ReminderPreviewController extends Controller
                 return;
             }
 
-            $previous = $data['previous_approval_id'] === null ? null : (int) $data['previous_approval_id'];
-            if ($latest?->id !== $previous) {
+            $previous = $request->validated('previous_approval_id');
+            if ($latest?->id !== ($previous === null ? null : (int) $previous)) {
                 $this->changedPreview();
             }
 
