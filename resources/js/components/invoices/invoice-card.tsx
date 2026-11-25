@@ -3,6 +3,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { show as showImport } from '@/routes/organizations/invoice-imports';
 import {
     balanceHistory,
     deadlineHistory,
@@ -28,6 +29,7 @@ export const invoiceSourceLabels = {
 export type Invoice = {
     id: string;
     number: string;
+    importBatchId: string | null;
     customer: string;
     customerId: string;
     dueDate: string;
@@ -374,6 +376,18 @@ export default function InvoiceCard({
                         </>
                     )}
                 </Form>
+            )}
+            {invoice.importBatchId && (
+                <Button asChild variant="outline">
+                    <Link
+                        href={showImport({
+                            organization: organizationId,
+                            import: invoice.importBatchId,
+                        })}
+                    >
+                        Létrehozó import eredménye
+                    </Link>
+                </Button>
             )}
             {invoice.checkedAt && (
                 <p className="text-sm text-muted-foreground">
