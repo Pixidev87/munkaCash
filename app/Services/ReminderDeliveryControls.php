@@ -21,6 +21,8 @@ class ReminderDeliveryControls
 
     public const string BILLING_CONFIRMATION_REVOKED = 'billing_confirmation_revoked';
 
+    public const string BALANCE_RECHECKED = 'balance_rechecked';
+
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {
