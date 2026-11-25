@@ -206,7 +206,7 @@ class InvoiceTrackingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('invoices.data', 1)
                 ->where('invoices.data.0.id', (string) $matching->id)
-                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'disputed' => true, 'overdue' => false]));
+                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'customerId' => '', 'disputed' => true, 'overdue' => false]));
         $this->get($route.'?status=paid&disputed=1')
             ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
 
@@ -214,6 +214,44 @@ class InvoiceTrackingTest extends TestCase
         $this->from($route)->get($route.'?status=invalid&disputed=2&page=0')
             ->assertRedirect($route)
             ->assertSessionHasErrorsIn('invoiceFilters', ['status', 'disputed', 'page']);
+    }
+
+    public function test_customer_filter_combines_and_rejects_customers_from_other_companies(): void
+    {
+        $company = Organization::factory()->create();
+        $foreignCompany = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach([$company->id, $foreignCompany->id], ['status' => 'active']);
+        $selected = $this->createInvoice($company);
+        $selected->forceFill(['is_disputed' => true])->save();
+        $foreign = $this->createInvoice($foreignCompany);
+        $second = $company->customers()->create(['display_name' => 'Másik ügyfél']);
+        $company->invoices()->create([
+            'customer_id' => $second->id,
+            'invoice_number' => '00043',
+            'due_date' => '2026-12-01',
+            'gross_amount' => 120_000,
+        ])->forceFill(['is_disputed' => true])->save();
+
+        $list = route('organizations.invoices.index', $company);
+        $this->actingAs($member)->get($list.'?disputed=1&customer_id='.$selected->customer_id)
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 1)
+                ->where('invoices.data.0.number', '00042')
+                ->where('invoices.data.0.customerId', (string) $selected->customer_id)
+                ->where('filters.customerId', (string) $selected->customer_id)
+                ->where('selectedCustomerId', ''));
+        $this->get($list.'?customer='.$selected->customer_id)
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 2)
+                ->where('filters.customerId', '')
+                ->where('selectedCustomerId', (string) $selected->customer_id));
+
+        foreach ([$foreign->customer_id, 'invalid'] as $customerId) {
+            $this->from($list)->get($list.'?customer_id='.$customerId)
+                ->assertRedirect($list)
+                ->assertSessionHasErrorsIn('invoiceFilters', 'customer_id');
+        }
     }
 
     public function test_invoice_pagination_preserves_applied_filters(): void
@@ -232,12 +270,12 @@ class InvoiceTrackingTest extends TestCase
         }
         $this->createInvoice($company);
         $route = route('organizations.invoices.index', $company);
-        $firstPage = $this->actingAs($member)->get($route.'?status=unchecked&disputed=1')
+        $firstPage = $this->actingAs($member)->get($route.'?status=unchecked&disputed=1&customer_id='.$customer->id)
             ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 25));
 
         $next = $firstPage->inertiaProps('invoices.next_page_url');
         parse_str(parse_url($next, PHP_URL_QUERY), $query);
-        $this->assertSame(['status' => 'unchecked', 'disputed' => '1', 'page' => '2'], $query);
+        $this->assertSame(['status' => 'unchecked', 'disputed' => '1', 'customer_id' => (string) $customer->id, 'page' => '2'], $query);
         $this->get($next)->assertInertia(fn (Assert $page) => $page
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', 'DEMO-1'));

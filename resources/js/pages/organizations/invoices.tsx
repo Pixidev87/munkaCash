@@ -23,6 +23,7 @@ type Props = {
         invoiceNumber: string;
         status: string;
         source: string;
+        customerId: string;
         disputed: boolean;
         overdue: boolean;
     };
@@ -47,6 +48,7 @@ export default function InvoicesPage({
         filters.invoiceNumber ||
         filters.status ||
         filters.source ||
+        filters.customerId ||
         filters.disputed ||
         filters.overdue,
     );
@@ -292,6 +294,28 @@ export default function InvoicesPage({
                                         ))}
                                     </select>
                                     <InputError message={errors.source} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-invoice-customer">
+                                        Számla ügyfele
+                                    </Label>
+                                    <select
+                                        id="filter-invoice-customer"
+                                        name="customer_id"
+                                        defaultValue={filters.customerId}
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    >
+                                        <option value="">Összes ügyfél</option>
+                                        {customers.map((customer) => (
+                                            <option
+                                                key={customer.id}
+                                                value={customer.id}
+                                            >
+                                                {customer.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.customer_id} />
                                 </div>
                             </div>
                             <label className="flex items-center gap-2 text-sm">
