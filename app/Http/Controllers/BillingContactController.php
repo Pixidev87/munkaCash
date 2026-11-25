@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Customers\ConfirmBillingContactRequest;
 use App\Http\Requests\Customers\UpdateBillingContactRequest;
 use App\Models\Customer;
+use App\Services\ReminderDeliveryControls;
+use App\Services\ReminderTestQueue;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -33,9 +35,14 @@ class BillingContactController extends Controller
         ]);
     }
 
-    public function update(UpdateBillingContactRequest $request, string $organization, string $customer): RedirectResponse
-    {
-        $contact = $this->customer($request, $organization, $customer);
+    public function update(
+        UpdateBillingContactRequest $request,
+        string $organization,
+        string $customer,
+        ReminderTestQueue $queue,
+    ): RedirectResponse {
+        $company = $request->user()->findActiveOrganization($organization);
+        $contact = $company->customers()->findOrFail($customer);
         $email = $request->validated('billing_email');
         $revision = (int) $request->validated('revision');
 
@@ -55,6 +62,8 @@ class BillingContactController extends Controller
             if ($updated === 0) {
                 $this->changedContact('address');
             }
+
+            $queue->blockPending($company, ReminderDeliveryControls::BILLING_CONTACT_CHANGED, $contact);
         }
 
         return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);

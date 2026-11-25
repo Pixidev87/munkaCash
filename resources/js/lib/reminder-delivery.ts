@@ -12,6 +12,7 @@ export const deliveryReasons: Record<string, string> = {
     balance_unverified: 'A számla fennálló összege új ellenőrzést igényel.',
     invoice_disputed: 'A számla vitatott.',
     customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
+    billing_contact_changed: 'Az ügyfél pénzügyi e-mail-címe megváltozott.',
     cooldown:
         'A legutóbbi küldési kísérlettől számítva hét napnak kell eltelnie.',
     outside_window: 'A jóváhagyás érvényessége alatt nincs küldési ablak.',
