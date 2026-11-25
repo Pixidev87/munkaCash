@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\ReminderTestDelivery;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -85,6 +86,26 @@ class ReminderDeliveryLogTest extends TestCase
             'invoice_number' => str_repeat('A', 101),
             'page' => 0,
         ]))->assertUnprocessable()->assertJsonValidationErrors(['status', 'invoice_number', 'reason', 'page']);
+    }
+
+    public function test_date_filter_uses_the_budapest_calendar_day_even_at_a_clock_change(): void
+    {
+        $company = Organization::factory()->create();
+        $invoice = $this->invoice($company, '00042');
+        foreach (['2026-03-28 22:59:59', '2026-03-28 23:00:00', '2026-03-29 21:59:59', '2026-03-29 22:00:00'] as $at) {
+            $this->travelTo(Carbon::parse($at, 'UTC'));
+            $deliveries[] = $this->delivery($invoice, ReminderTestDeliveryStatus::Pending);
+        }
+
+        $params = ['organization' => $company, 'queued_from' => '2026-03-29', 'queued_to' => '2026-03-29'];
+        $this->actingAs($this->memberOf($company))->get(route('organizations.reminder-deliveries.index', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('deliveries.data', 2)
+                ->where('deliveries.data.0.id', $deliveries[2]->id)
+                ->where('deliveries.data.1.id', $deliveries[1]->id)
+                ->where('filters.queuedFrom', '2026-03-29'));
+        $this->getJson(route('organizations.reminder-deliveries.index', [...$params, 'queued_to' => '2026-03-28']))
+            ->assertUnprocessable()->assertJsonValidationErrors('queued_to');
     }
 
     public function test_pagination_preserves_filters_and_sorts_newest_first(): void

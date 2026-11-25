@@ -4,24 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Reminders\FilterReminderDeliveriesRequest;
 use App\Models\ReminderTestDelivery;
+use App\Services\ReminderDeliveryLogQuery;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReminderDeliveryLogController extends Controller
 {
-    public function index(FilterReminderDeliveriesRequest $request, string $organization): Response
+    public function index(FilterReminderDeliveriesRequest $request, string $organization, ReminderDeliveryLogQuery $log): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $reason = $request->validated('reason');
-        $status = $request->validated('status');
-        $invoiceNumber = $request->validated('invoice_number');
-
-        $deliveries = ReminderTestDelivery::query()
-            ->join('reminder_approvals', 'reminder_approvals.id', '=', 'reminder_test_deliveries.reminder_approval_id')
-            ->whereIn('reminder_approvals.invoice_id', $company->invoices()->select('id'))
-            ->when($invoiceNumber !== null, fn ($query) => $query->where('reminder_approvals.invoice_number', $invoiceNumber))
-            ->when($status !== null, fn ($query) => $query->where('reminder_test_deliveries.status', $status))
-            ->when($reason !== null, fn ($query) => $query->where('reminder_test_deliveries.reason', $reason))
+        $filters = $request->criteria();
+        $deliveries = $log->matching($company, $filters)
             ->select([
                 'reminder_test_deliveries.id', 'reminder_test_deliveries.status', 'reminder_test_deliveries.reason',
                 'reminder_test_deliveries.available_at', 'reminder_test_deliveries.created_at', 'reminder_test_deliveries.updated_at',
@@ -30,7 +23,7 @@ class ReminderDeliveryLogController extends Controller
             ->latest('reminder_test_deliveries.created_at')
             ->latest('reminder_test_deliveries.id')
             ->simplePaginate(20)
-            ->appends(['status' => $status, 'invoice_number' => $invoiceNumber, 'reason' => $reason])
+            ->appends($filters)
             ->through(fn (ReminderTestDelivery $delivery): array => [
                 'id' => $delivery->id,
                 'invoiceId' => (string) $delivery->getAttribute('invoice_id'),
@@ -44,7 +37,13 @@ class ReminderDeliveryLogController extends Controller
 
         return Inertia::render('organizations/reminder-delivery-log', [
             'organization' => ['id' => (string) $company->id, 'name' => $company->name],
-            'filters' => ['status' => $status, 'invoiceNumber' => $invoiceNumber, 'reason' => $reason],
+            'filters' => [
+                'status' => $filters['status'] ?? null,
+                'invoiceNumber' => $filters['invoice_number'] ?? null,
+                'reason' => $filters['reason'] ?? null,
+                'queuedFrom' => $filters['queued_from'] ?? null,
+                'queuedTo' => $filters['queued_to'] ?? null,
+            ],
             'deliveries' => $deliveries,
         ]);
     }
