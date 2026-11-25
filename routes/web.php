@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group(function () {
     Route::get('dashboard', [OrganizationController::class, 'index'])->name('dashboard');
 
     Route::get('organizations/{organization}', [OrganizationController::class, 'show'])
