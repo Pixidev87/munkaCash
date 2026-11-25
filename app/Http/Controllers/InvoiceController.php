@@ -77,6 +77,7 @@ class InvoiceController extends Controller
                 ? route('organizations.exports.filtered-invoices', ['organization' => $company->id, ...$request->criteriaWithoutSort()], absolute: false)
                 : null,
             'filters' => [
+                'importBatchId' => $filters['import_batch'] ?? null,
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',
                 'source' => $filters['source'] ?? '',

@@ -17,6 +17,7 @@ class InvoiceListQuery
     public function matching(Organization $company, array $filters): Builder
     {
         return $company->invoices()->getQuery()
+            ->when(isset($filters['import_batch']), fn ($query) => $query->where('invoice_import_id', $filters['import_batch']))
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
             ->when(isset($filters['customer_id']), fn ($query) => $query->where('customer_id', (int) $filters['customer_id']))
             ->when(isset($filters['source']), fn ($query) => $query->where('source', $filters['source']))
