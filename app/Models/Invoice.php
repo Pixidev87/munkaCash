@@ -63,6 +63,12 @@ class Invoice extends Model
         return $this->hasMany(InvoiceBalanceEvent::class);
     }
 
+    /** @return HasMany<InvoiceDeadlineEvent, $this> */
+    public function deadlineEvents(): HasMany
+    {
+        return $this->hasMany(InvoiceDeadlineEvent::class);
+    }
+
     /** @return HasMany<ReminderApproval, $this> */
     public function reminderApprovals(): HasMany
     {

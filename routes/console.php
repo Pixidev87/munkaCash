@@ -2,6 +2,7 @@
 
 use App\Models\CustomerBillingContactEvent;
 use App\Models\InvoiceBalanceEvent;
+use App\Models\InvoiceDeadlineEvent;
 use App\Models\InvoiceImport;
 use App\Models\OrganizationAccessEvent;
 use App\Models\OrganizationInvitation;
@@ -22,6 +23,7 @@ Schedule::command('model:prune', ['--model' => [
     OrganizationInvitation::class,
     OrganizationAccessEvent::class,
     InvoiceBalanceEvent::class,
+    InvoiceDeadlineEvent::class,
     CustomerBillingContactEvent::class,
 ]])->daily();
 

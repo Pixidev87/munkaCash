@@ -117,6 +117,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::delete('invoices/{invoice}/balance', [InvoiceController::class, 'resetBalance'])
                     ->whereNumber('invoice')
                     ->name('invoices.balance.destroy');
+                Route::get('invoices/{invoice}/deadline-history', [InvoiceDeadlineController::class, 'history'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.deadline-history');
                 Route::patch('invoices/{invoice}/deadline', [InvoiceDeadlineController::class, 'update'])
                     ->whereNumber('invoice')
                     ->name('invoices.deadline.update');

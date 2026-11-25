@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     balanceHistory,
+    deadlineHistory,
     index,
     reminderPreview,
 } from '@/routes/organizations/invoices';
@@ -301,6 +302,16 @@ export default function InvoiceCard({
                     </Form>
                 </details>
             )}
+            <Button asChild variant="outline">
+                <Link
+                    href={deadlineHistory({
+                        organization: organizationId,
+                        invoice: invoice.id,
+                    })}
+                >
+                    Határidő-előzmények
+                </Link>
+            </Button>
             <Button asChild variant="outline">
                 <Link
                     href={balanceHistory({
