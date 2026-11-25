@@ -242,6 +242,30 @@ class InvoiceImportTest extends TestCase
                 ->where('imports.data.1.created', 1));
     }
 
+    public function test_uploader_can_discard_only_pending_imports_after_confirmation(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $coworker = User::factory()->create();
+        $coworker->organizations()->attach($company, ['status' => 'active']);
+        $this->actingAs($user);
+
+        $pending = $this->upload($company, "{$customer};00042;2026-12-01;HUF;120000");
+        $discard = route('organizations.invoice-imports.destroy', [$company, $pending]);
+        $this->delete($discard)->assertSessionHasErrorsIn('discardImport', 'confirm');
+        $this->actingAs($coworker)->delete($discard, ['confirm' => true])->assertNotFound();
+        $this->actingAs($user)->delete($discard, ['confirm' => true])
+            ->assertRedirect(route('organizations.invoice-imports.index', $company));
+        $this->confirm($company, $pending)->assertNotFound();
+        $this->assertModelMissing($pending);
+        $this->assertDatabaseCount('invoices', 0);
+
+        $completed = $this->upload($company, "{$customer};00043;2026-12-01;HUF;120000");
+        $this->confirm($company, $completed)->assertSessionHasNoErrors();
+        $this->delete(route('organizations.invoice-imports.destroy', [$company, $completed]), ['confirm' => true])->assertConflict();
+        $this->assertModelExists($completed);
+        $this->assertDatabaseCount('invoices', 1);
+    }
+
     public function test_expired_previews_cannot_be_opened_or_confirmed_and_are_pruned(): void
     {
         [$company, $user, $customer] = $this->createCompany();

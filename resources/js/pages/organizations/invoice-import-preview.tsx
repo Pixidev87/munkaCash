@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
     confirm,
     create,
+    destroy,
     errorReport,
 } from '@/routes/organizations/invoice-imports';
 import { index } from '@/routes/organizations/invoices';
@@ -158,6 +159,48 @@ export default function InvoiceImportPreview({
                         )}
                     </Form>
 
+                    {!organizationReadOnly && (
+                        <details className="space-y-3 rounded-xl border p-4">
+                            <summary className="cursor-pointer font-medium">
+                                Függő import elvetése
+                            </summary>
+                            <Form
+                                {...destroy.form({
+                                    organization: organizationId,
+                                    import: importId,
+                                })}
+                                errorBag="discardImport"
+                                className="space-y-2"
+                            >
+                                {({ errors, processing }) => (
+                                    <>
+                                        <label className="flex items-start gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="confirm"
+                                                value="1"
+                                                required
+                                                className="mt-1"
+                                            />
+                                            Megerősítem a függő import
+                                            elvetését.
+                                        </label>
+                                        <InputError
+                                            message={errors.confirm}
+                                            role="alert"
+                                        />
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            disabled={processing}
+                                        >
+                                            Import elvetése
+                                        </Button>
+                                    </>
+                                )}
+                            </Form>
+                        </details>
+                    )}
                     <ol
                         className="divide-y rounded-xl border"
                         aria-label="Importálandó sorok"
