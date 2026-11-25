@@ -18,6 +18,7 @@ type Delivery = {
     invoiceNumber: string;
     status: DeliveryStatus;
     reason: string | null;
+    availableAt: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -193,6 +194,22 @@ export default function ReminderDeliveryLog({
                                         </time>
                                     </dd>
                                 </div>
+                                {delivery.availableAt && (
+                                    <div>
+                                        <dt>Legkorábbi feldolgozás</dt>
+                                        <dd>
+                                            <time
+                                                dateTime={delivery.availableAt}
+                                            >
+                                                {formattedDate.format(
+                                                    new Date(
+                                                        delivery.availableAt,
+                                                    ),
+                                                )}
+                                            </time>
+                                        </dd>
+                                    </div>
+                                )}
                                 <div>
                                     <dt>Utoljára frissítve</dt>
                                     <dd>
