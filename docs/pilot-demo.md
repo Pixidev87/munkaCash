@@ -29,3 +29,9 @@ A demó létrehozásakor mindkét cég küldése szünetel, jóváhagyás és k�
 Az emlékeztető előnézete a számla eredeti dátumát mutatja. Ha a dátum munkaszüneti vagy pihenőnapra esik, külön megjelenik a következő magyar munkanap. A jóváhagyás az így számított nap után válik elérhetővé. A tesztküldésre továbbra is a küldési időablak vonatkozik.
 
 A pilot jelenleg a `config/reminder-calendar.php` fájlban rögzített 2026-os munkanaptárat használja. Ha a dátum számításához vagy a küldési időablakhoz hiányzik az érintett év ellenőrzött naptára, az adott művelet blokkolt.
+
+## Munkatárs meghívása
+
+A **Munkatársak kezelése** oldalon a tulajdonos megadja a meghívott e-mail-címét és létrehozza a linket. A linket a tulajdonos osztja meg a munkatárssal. A munkatárs a meghívott címhez tartozó, ellenőrzött fiókkal bejelentkezik, megnyitja a linket és elfogadja a meghívást. A link 24 óráig és egy elfogadásra érvényes. Ugyanarra a címre kiadott új link érvényteleníti az előzőt.
+
+A helyreállítás és az éles telepítés során a meghívó útvonalát is érzékeny adatként kezeld. A webszerver és a proxy hozzáférési naplójában a meghívó tokenjét maszkolni kell. Régi mentésből helyreállított adatbázisban újranyitás előtt érvénytelenítsd a függő meghívókat, hogy a mentésben szereplő korábbi linkek ne váljanak ismét használhatóvá.
