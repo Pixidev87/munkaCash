@@ -11,6 +11,7 @@ import { destroy as revokeApproval } from '@/routes/organizations/invoices/remin
 import {
     index,
     reminderApproval,
+    reminderApprovalHistory,
     reminderTestDelivery,
 } from '@/routes/organizations/invoices';
 
@@ -204,6 +205,16 @@ export default function ReminderPreviewPage({
                     </ul>
                 </section>
             )}
+            <Link
+                className="text-sm underline"
+                href={reminderApprovalHistory({
+                    organization: organizationId,
+                    invoice: invoiceId,
+                })}
+            >
+                Jóváhagyási előzmények
+            </Link>
+
             {approval && (
                 <section
                     className="space-y-2 rounded-xl border p-4"

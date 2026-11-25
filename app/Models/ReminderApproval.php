@@ -18,12 +18,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $revoked_at
  * @property Carbon $expires_at
  * @property-read User|null $approver
+ * @property-read User|null $revoker
  * @property-read ReminderTestDelivery|null $testDelivery
  */
 #[Fillable(['approved_by', 'fingerprint', 'template_version', 'invoice_number', 'outstanding_amount', 'currency', 'approved_at', 'expires_at'])]
 class ReminderApproval extends Model
 {
     use MassPrunable;
+
+    public const int RETENTION_DAYS = 90;
 
     public $timestamps = false;
 
@@ -42,6 +45,12 @@ class ReminderApproval extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function revoker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revoked_by');
+    }
+
     /** @return HasOne<ReminderTestDelivery, $this> */
     public function testDelivery(): HasOne
     {
@@ -51,6 +60,6 @@ class ReminderApproval extends Model
     /** @return Builder<static> */
     public function prunable(): Builder
     {
-        return static::query()->where('approved_at', '<=', now()->subDays(90));
+        return static::query()->where('approved_at', '<=', now()->subDays(self::RETENTION_DAYS));
     }
 }
