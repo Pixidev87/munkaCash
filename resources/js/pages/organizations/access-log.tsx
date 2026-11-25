@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { accessLog } from '@/routes/organizations';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,11 @@ type AccessEvent = {
 
 type Props = {
     organization: { id: string; name: string };
-    filters: { action: keyof typeof actions | null };
+    filters: {
+        action: keyof typeof actions | null;
+        from: string | null;
+        to: string | null;
+    };
     events: {
         data: AccessEvent[];
         prev_page_url: string | null;
@@ -85,11 +90,38 @@ export default function AccessLog({ organization, filters, events }: Props) {
                                 message={errors.action ?? errors.page}
                             />
                         </div>
+                        <fieldset className="grid gap-3 sm:grid-cols-2">
+                            <legend className="mb-2 text-sm font-medium">
+                                Időszak (budapesti idő)
+                            </legend>
+                            <div className="space-y-2">
+                                <Label htmlFor="access-from">
+                                    Ettől a naptól
+                                </Label>
+                                <Input
+                                    id="access-from"
+                                    name="from"
+                                    type="date"
+                                    defaultValue={filters.from ?? ''}
+                                />
+                                <InputError message={errors.from} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="access-to">Eddig a napig</Label>
+                                <Input
+                                    id="access-to"
+                                    name="to"
+                                    type="date"
+                                    defaultValue={filters.to ?? ''}
+                                />
+                                <InputError message={errors.to} />
+                            </div>
+                        </fieldset>
                         <div className="flex flex-wrap gap-2">
                             <Button type="submit" disabled={processing}>
                                 Szűrés
                             </Button>
-                            {filters.action && (
+                            {(filters.action || filters.from || filters.to) && (
                                 <Button asChild variant="outline">
                                     <Link href={accessLog(organization.id)}>
                                         Szűrők törlése
