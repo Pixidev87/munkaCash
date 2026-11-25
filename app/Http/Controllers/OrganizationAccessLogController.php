@@ -16,7 +16,7 @@ class OrganizationAccessLogController extends Controller
     public function index(FilterAccessLogRequest $request, string $organization): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        Gate::authorize('manageMembers', $company);
+        Gate::authorize('viewAccessLog', $company);
 
         $filters = $request->criteria();
         $recent = OrganizationAccessEvent::query()
