@@ -9,6 +9,7 @@ import {
     reminderPreview,
 } from '@/routes/organizations/invoices';
 import { destroy, update } from '@/routes/organizations/invoices/balance';
+import { update as updateDeadline } from '@/routes/organizations/invoices/deadline';
 import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
 export const invoiceStatusLabels = {
@@ -62,6 +63,7 @@ export default function InvoiceCard({
 }) {
     const amountId = `balance-${invoice.id}`;
     const resetBalanceId = `reset-balance-${invoice.id}`;
+    const deadlineId = `deadline-${invoice.id}`;
     const disputeId = `dispute-${invoice.id}`;
 
     return (
@@ -134,6 +136,63 @@ export default function InvoiceCard({
                     </dd>
                 </div>
             </dl>
+
+            {!readOnly && (
+                <details className="rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                        Fizetési határidő javítása
+                    </summary>
+                    <Form
+                        {...updateDeadline.form({
+                            organization: organizationId,
+                            invoice: invoice.id,
+                        })}
+                        errorBag={deadlineId}
+                        options={{ preserveScroll: true }}
+                        className="mt-3 space-y-2"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <input
+                                    type="hidden"
+                                    name="revision"
+                                    value={invoice.revision}
+                                />
+                                <Label htmlFor={deadlineId}>
+                                    Javított fizetési határidő
+                                </Label>
+                                <Input
+                                    key={invoice.dueDate}
+                                    id={deadlineId}
+                                    name="due_date"
+                                    type="date"
+                                    min="1000-01-01"
+                                    max="9999-12-31"
+                                    defaultValue={invoice.dueDate}
+                                    aria-invalid={Boolean(errors.due_date)}
+                                    className="w-48 max-w-full"
+                                    required
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    Új dátum esetén a várakozó tesztküldések
+                                    leállnak, és új jóváhagyás szükséges.
+                                </p>
+                                <InputError
+                                    message={errors.due_date ?? errors.revision}
+                                    role="alert"
+                                />
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                >
+                                    Határidő mentése
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </details>
+            )}
 
             {!readOnly && (
                 <Form

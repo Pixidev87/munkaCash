@@ -81,6 +81,7 @@ class OrganizationCloseoutTest extends TestCase
             ['POST', 'invoices.store', [$company]],
             ['PATCH', 'invoices.balance.update', [$company, $invoice]],
             ['DELETE', 'invoices.balance.destroy', [$company, $invoice]],
+            ['PATCH', 'invoices.deadline.update', [$company, $invoice]],
             ['PATCH', 'invoices.dispute.update', [$company, $invoice]],
             ['POST', 'invoice-imports.store', [$company]],
             ['DELETE', 'invoice-imports.destroy', [$company, (string) Str::uuid()]],
