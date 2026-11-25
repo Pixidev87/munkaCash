@@ -36,6 +36,7 @@ class OrganizationController extends Controller
             'organizationId' => (string) $selected->id,
             'balanceSummary' => $exportAvailable ? $summary->forOrganization($selected) : null,
             'remindersEnabled' => $selected->reminders_enabled,
+            'canViewAccessLog' => $exportAvailable && $request->user()->can('viewAccessLog', $selected),
             'canExportData' => $exportAvailable && $request->user()->can('exportData', $selected),
             'closeout' => $selected->isClosing() ? [
                 'startedAt' => $selected->closeout_started_at?->toISOString(),
