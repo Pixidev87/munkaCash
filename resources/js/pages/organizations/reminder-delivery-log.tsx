@@ -24,7 +24,11 @@ type Delivery = {
 
 type Props = {
     organization: { id: string; name: string };
-    filters: { status: DeliveryStatus | null; invoiceNumber: string | null };
+    filters: {
+        status: DeliveryStatus | null;
+        invoiceNumber: string | null;
+        reason: string | null;
+    };
     deliveries: {
         data: Delivery[];
         prev_page_url: string | null;
@@ -43,7 +47,10 @@ export default function ReminderDeliveryLog({
     filters,
     deliveries,
 }: Props) {
-    const filtered = filters.status !== null || filters.invoiceNumber !== null;
+    const filtered =
+        filters.status !== null ||
+        filters.invoiceNumber !== null ||
+        filters.reason !== null;
 
     return (
         <div className="w-full max-w-4xl space-y-6 p-4 sm:p-6">
@@ -67,7 +74,7 @@ export default function ReminderDeliveryLog({
             >
                 {({ errors, processing }) => (
                     <>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <div className="space-y-2">
                                 <Label htmlFor="delivery-status">
                                     Küldési állapot
@@ -100,6 +107,36 @@ export default function ReminderDeliveryLog({
                                     maxLength={100}
                                 />
                                 <InputError message={errors.invoice_number} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="delivery-reason">
+                                    Állapot oka
+                                </Label>
+                                <select
+                                    id="delivery-reason"
+                                    name="reason"
+                                    defaultValue={filters.reason ?? ''}
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    <option value="">Minden ok</option>
+                                    {filters.reason &&
+                                        !Object.hasOwn(
+                                            deliveryReasons,
+                                            filters.reason,
+                                        ) && (
+                                            <option value={filters.reason}>
+                                                Egyéb ok
+                                            </option>
+                                        )}
+                                    {Object.entries(deliveryReasons).map(
+                                        ([reason, label]) => (
+                                            <option key={reason} value={reason}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                                <InputError message={errors.reason} />
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -141,7 +178,8 @@ export default function ReminderDeliveryLog({
                             </div>
                             {delivery.reason && (
                                 <p className="text-sm text-muted-foreground">
-                                    {deliveryReasons[delivery.reason]}
+                                    {deliveryReasons[delivery.reason] ??
+                                        'Egyéb küldési ok.'}
                                 </p>
                             )}
                             <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">

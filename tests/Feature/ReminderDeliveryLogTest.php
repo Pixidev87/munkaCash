@@ -40,21 +40,25 @@ class ReminderDeliveryLogTest extends TestCase
                 ]));
     }
 
-    public function test_status_and_exact_invoice_number_filter_together_and_are_validated(): void
+    public function test_reason_status_and_exact_invoice_number_filter_together_and_are_validated(): void
     {
         $company = Organization::factory()->create();
         $invoice = $this->invoice($company, '00042');
-        $match = $this->delivery($invoice, ReminderTestDeliveryStatus::Blocked);
+        $match = $this->delivery($invoice, ReminderTestDeliveryStatus::Blocked, 'approval_revoked');
+        $this->delivery($invoice, ReminderTestDeliveryStatus::Blocked, 'balance_rechecked');
+        $this->delivery($this->invoice(Organization::factory()->create(), '00042'), ReminderTestDeliveryStatus::Blocked, 'approval_revoked');
         $this->delivery($invoice, ReminderTestDeliveryStatus::Accepted);
-        $this->delivery($this->invoice($company, '42'), ReminderTestDeliveryStatus::Blocked);
+        $this->delivery($this->invoice($company, '42'), ReminderTestDeliveryStatus::Blocked, 'approval_revoked');
         $this->actingAs($this->memberOf($company));
 
         $this->get(route('organizations.reminder-deliveries.index', [
             'organization' => $company,
             'status' => 'blocked',
+            'reason' => 'approval_revoked',
             'invoice_number' => '00042',
         ]))->assertInertia(fn (Assert $page) => $page
             ->where('filters.status', 'blocked')
+            ->where('filters.reason', 'approval_revoked')
             ->where('filters.invoiceNumber', '00042')
             ->has('deliveries.data', 1)
             ->where('deliveries.data.0.id', $match->id));
@@ -62,9 +66,10 @@ class ReminderDeliveryLogTest extends TestCase
         $this->getJson(route('organizations.reminder-deliveries.index', [
             'organization' => $company,
             'status' => 'sent',
+            'reason' => 'invalid reason',
             'invoice_number' => str_repeat('A', 101),
             'page' => 0,
-        ]))->assertUnprocessable()->assertJsonValidationErrors(['status', 'invoice_number', 'page']);
+        ]))->assertUnprocessable()->assertJsonValidationErrors(['status', 'invoice_number', 'reason', 'page']);
     }
 
     public function test_pagination_preserves_filters_and_sorts_newest_first(): void
@@ -73,17 +78,18 @@ class ReminderDeliveryLogTest extends TestCase
         $invoice = $this->invoice($company, '00042');
         $this->freezeTime();
         for ($index = 0; $index < 20; $index++) {
-            $this->delivery($invoice, ReminderTestDeliveryStatus::Pending);
+            $this->delivery($invoice, ReminderTestDeliveryStatus::Blocked, 'approval_revoked');
         }
         $this->travel(1)->minute();
-        $newest = $this->delivery($invoice, ReminderTestDeliveryStatus::Pending);
-        $baseQuery = ['organization' => $company, 'status' => 'pending', 'invoice_number' => '00042'];
+        $newest = $this->delivery($invoice, ReminderTestDeliveryStatus::Blocked, 'approval_revoked');
+        $baseQuery = ['organization' => $company, 'status' => 'blocked', 'reason' => 'approval_revoked', 'invoice_number' => '00042'];
 
         $this->actingAs($this->memberOf($company))->get(route('organizations.reminder-deliveries.index', $baseQuery))
             ->assertInertia(fn (Assert $page) => $page
                 ->has('deliveries.data', 20)
                 ->where('deliveries.data.0.id', $newest->id)
-                ->where('deliveries.next_page_url', fn (string $url): bool => str_contains($url, 'status=pending')
+                ->where('deliveries.next_page_url', fn (string $url): bool => str_contains($url, 'status=blocked')
+                    && str_contains($url, 'reason=approval_revoked')
                     && str_contains($url, 'invoice_number=00042')
                     && str_contains($url, 'page=2')));
 
@@ -123,7 +129,7 @@ class ReminderDeliveryLogTest extends TestCase
         ]);
     }
 
-    private function delivery(Invoice $invoice, ReminderTestDeliveryStatus $status): ReminderTestDelivery
+    private function delivery(Invoice $invoice, ReminderTestDeliveryStatus $status, ?string $reason = null): ReminderTestDelivery
     {
         $approval = $invoice->reminderApprovals()->create([
             'fingerprint' => str_repeat('a', 64),
@@ -137,7 +143,7 @@ class ReminderDeliveryLogTest extends TestCase
 
         return $approval->testDelivery()->create([
             'status' => $status,
-            'reason' => $status === ReminderTestDeliveryStatus::Unknown ? 'transport_unconfirmed' : null,
+            'reason' => $reason ?? ($status === ReminderTestDeliveryStatus::Unknown ? 'transport_unconfirmed' : null),
         ]);
     }
 }

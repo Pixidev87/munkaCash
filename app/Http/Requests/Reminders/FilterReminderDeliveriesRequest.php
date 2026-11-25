@@ -13,6 +13,7 @@ class FilterReminderDeliveriesRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'reason' => ['nullable', 'string', 'max:64', 'regex:/\A[a-z][a-z0-9_]*\z/'],
             'status' => ['nullable', Rule::enum(ReminderTestDeliveryStatus::class)],
             'invoice_number' => ['nullable', 'string', 'max:100'],
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -23,6 +24,7 @@ class FilterReminderDeliveriesRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'reason.*' => 'Válassz érvényes küldési okot.',
             'status.*' => 'Válassz érvényes küldési állapotot.',
             'invoice_number.*' => 'A számlaszám legfeljebb 100 karakter lehet.',
             'page.*' => 'Az oldalszám legyen pozitív egész szám.',
