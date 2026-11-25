@@ -80,6 +80,30 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'blocked', 'reason' => 'approval_expired']);
     }
 
+    public function test_changing_a_billing_address_blocks_only_the_affected_customer_deliveries(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        [, , , $otherApproval] = $this->approvedDraft();
+        $otherDelivery = $otherApproval->testDelivery()->create(['status' => 'pending']);
+        $customer = $invoice->customer;
+        $url = route('organizations.customers.billing-contact.update', [$company, $customer]);
+
+        $this->actingAs($owner)->patch($url, ['billing_email' => $customer->billing_email, 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'pending']);
+
+        $this->patch($url, ['billing_email' => 'changed@example.test', 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id,
+            'status' => 'blocked',
+            'reason' => 'billing_contact_changed',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'pending']);
+        $this->assertNull($customer->fresh()->billing_email_confirmed_at);
+    }
+
     public function test_uncertain_transport_and_abandoned_claims_are_not_retried(): void
     {
         [, , , $approval] = $this->approvedDraft();
