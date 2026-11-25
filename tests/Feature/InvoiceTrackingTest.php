@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Invoice;
 use App\Models\InvoiceBalanceEvent;
+use App\Models\InvoiceDeadlineEvent;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -449,6 +450,36 @@ class InvoiceTrackingTest extends TestCase
         $this->get($history)->assertGone();
         $this->artisan('organizations:purge', ['organization' => $company->id, '--apply' => true])->assertSuccessful();
         $this->assertDatabaseCount('invoice_balance_events', 0);
+    }
+
+    public function test_deadline_history_keeps_only_recent_changes_for_the_selected_invoice(): void
+    {
+        $company = Organization::factory()->create();
+        $user = User::factory()->create();
+        $user->organizations()->attach($company, ['status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $foreign = $this->createInvoice(Organization::factory()->create());
+        $url = route('organizations.invoices.deadline.update', [$company, $invoice]);
+        $history = 'organizations.invoices.deadline-history';
+        $old = $invoice->deadlineEvents()->create([
+            'actor_id' => $user->id, 'previous_due_date' => '2026-10-01', 'due_date' => '2026-12-01',
+            'occurred_at' => now()->subDays(91),
+        ]);
+
+        $this->actingAs($user)->patch($url, ['due_date' => '2026-12-02', 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->patch($url, ['due_date' => '2026-12-02', 'revision' => 1])->assertSessionHasNoErrors();
+        $this->get(route($history, [$company, $foreign]))->assertNotFound();
+        $this->get(route($history, [$company, $invoice]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('organizations/invoice-deadline-history')
+                ->has('events.data', 1)
+                ->where('events.data.0.previousDate', '2026-12-01')
+                ->where('events.data.0.date', '2026-12-02')
+                ->where('events.data.0.actor', $user->name));
+        $this->artisan('model:prune', ['--model' => [InvoiceDeadlineEvent::class]])->assertSuccessful();
+        $this->assertModelMissing($old);
+        $this->assertDatabaseCount('invoice_deadline_events', 1);
     }
 
     private function createInvoice(Organization $company): Invoice
