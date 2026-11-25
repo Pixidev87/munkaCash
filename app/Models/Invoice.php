@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $outstanding_amount
  * @property InvoiceStatus $status
  * @property Carbon|null $status_checked_at
+ * @property bool $is_disputed
  * @property int $revision
  * @property-read Customer $customer
  * @property-read User|null $checker
@@ -37,6 +38,7 @@ class Invoice extends Model
             'gross_amount' => 'integer',
             'outstanding_amount' => 'integer',
             'revision' => 'integer',
+            'is_disputed' => 'boolean',
             'status' => InvoiceStatus::class,
             'status_checked_at' => 'datetime',
         ];

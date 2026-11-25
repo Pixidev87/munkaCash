@@ -38,11 +38,12 @@ class OrganizationCsvExport
                 $invoice->outstanding_amount,
                 $invoice->status->value,
                 $invoice->status_checked_at?->toISOString(),
+                $invoice->is_disputed ? 1 : 0,
             ]);
 
         return $this->download('szamlak', $organization, [
             'invoice_id', 'customer_id', 'invoice_number', 'due_date', 'currency',
-            'gross_amount', 'outstanding_amount', 'status', 'status_checked_at_utc',
+            'gross_amount', 'outstanding_amount', 'status', 'status_checked_at_utc', 'is_disputed',
         ], $rows);
     }
 

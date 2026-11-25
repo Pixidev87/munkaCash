@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { reminderPreview } from '@/routes/organizations/invoices';
 import { update } from '@/routes/organizations/invoices/balance';
+import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
 const statusLabels = {
     unchecked: 'Ellenőrzés szükséges',
@@ -24,6 +25,7 @@ export type Invoice = {
     checkedAt: string | null;
     checker: string | null;
     revision: number;
+    isDisputed: boolean;
 };
 
 const huf = new Intl.NumberFormat('hu-HU', {
@@ -47,6 +49,7 @@ export default function InvoiceCard({
     readOnly?: boolean;
 }) {
     const amountId = `balance-${invoice.id}`;
+    const disputeId = `dispute-${invoice.id}`;
 
     return (
         <li className="space-y-4 rounded-xl border p-4">
@@ -59,9 +62,16 @@ export default function InvoiceCard({
                         {invoice.customer}
                     </p>
                 </div>
-                <p className="rounded-md bg-muted px-2 py-1 text-sm">
-                    {statusLabels[invoice.status]}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <p className="rounded-md bg-muted px-2 py-1 text-sm">
+                        {statusLabels[invoice.status]}
+                    </p>
+                    {invoice.isDisputed && (
+                        <p className="rounded-md border border-amber-500 px-2 py-1 text-sm">
+                            Vitatott
+                        </p>
+                    )}
+                </div>
             </div>
             <dl className="grid gap-2 text-sm sm:grid-cols-3">
                 <div>
@@ -154,6 +164,49 @@ export default function InvoiceCard({
                     Emlékeztető előnézete
                 </Link>
             </Button>
+            {!readOnly && (
+                <Form
+                    {...updateDispute.form({
+                        organization: organizationId,
+                        invoice: invoice.id,
+                    })}
+                    errorBag={disputeId}
+                    options={{ preserveScroll: true }}
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <input
+                                type="hidden"
+                                name="revision"
+                                value={invoice.revision}
+                            />
+                            <input
+                                type="hidden"
+                                name="is_disputed"
+                                value={invoice.isDisputed ? '0' : '1'}
+                            />
+                            <Button
+                                disabled={processing}
+                                aria-describedby={
+                                    errors.revision || errors.is_disputed
+                                        ? `${disputeId}-error`
+                                        : undefined
+                                }
+                                type="submit"
+                                variant="outline"
+                            >
+                                {invoice.isDisputed
+                                    ? 'Vitatottság feloldása'
+                                    : 'Megjelölés vitatottként'}
+                            </Button>
+                            <InputError
+                                id={`${disputeId}-error`}
+                                message={errors.revision ?? errors.is_disputed}
+                            />
+                        </>
+                    )}
+                </Form>
+            )}
             {invoice.checkedAt && (
                 <p className="text-sm text-muted-foreground">
                     Kézzel ellenőrizve{' '}

@@ -28,9 +28,11 @@ class ReminderTestDeliveryController extends Controller
             $blocker = $controls->blocker($company, $selected);
             if ($blocker !== null) {
                 throw ValidationException::withMessages([
-                    'delivery' => $blocker === ReminderDeliveryControls::ORGANIZATION_PAUSED
-                        ? 'A cég emlékeztetői szünetelnek.'
-                        : 'Az ügyfél emlékeztetői tiltva vannak.',
+                    'delivery' => match ($blocker) {
+                        ReminderDeliveryControls::ORGANIZATION_PAUSED => 'A cég emlékeztetői szünetelnek.',
+                        ReminderDeliveryControls::INVOICE_DISPUTED => 'A számla vitatott.',
+                        default => 'Az ügyfél emlékeztetői tiltva vannak.',
+                    },
                 ]);
             }
 

@@ -50,7 +50,7 @@ class OrganizationCsvExportTest extends TestCase
         $fields = ['customer_id' => $customer->id, 'due_date' => '2026-12-01', 'gross_amount' => 120_000];
         $unchecked = $company->invoices()->create([...$fields, 'invoice_number' => '00042']);
         $paid = $company->invoices()->create([...$fields, 'invoice_number' => '+MINTA-1']);
-        $paid->forceFill(['outstanding_amount' => 0, 'status' => 'paid', 'status_checked_at' => now()])->save();
+        $paid->forceFill(['outstanding_amount' => 0, 'status' => 'paid', 'status_checked_at' => now(), 'is_disputed' => true])->save();
         $other = Organization::factory()->create();
         $foreign = $other->customers()->create(['display_name' => 'Másik ügyfél']);
         $other->invoices()->create([...$fields, 'customer_id' => $foreign->id, 'invoice_number' => '00042']);
@@ -59,9 +59,9 @@ class OrganizationCsvExportTest extends TestCase
             ->assertDownload('munkacash-szamlak-'.$company->id.'.csv');
 
         $this->assertSame([
-            ['invoice_id', 'customer_id', 'invoice_number', 'due_date', 'currency', 'gross_amount', 'outstanding_amount', 'status', 'status_checked_at_utc'],
-            [(string) $unchecked->id, (string) $customer->id, '00042', '2026-12-01', 'HUF', '120000', '', 'unchecked', ''],
-            [(string) $paid->id, (string) $customer->id, "'+MINTA-1", '2026-12-01', 'HUF', '120000', '0', 'paid', now()->toISOString()],
+            ['invoice_id', 'customer_id', 'invoice_number', 'due_date', 'currency', 'gross_amount', 'outstanding_amount', 'status', 'status_checked_at_utc', 'is_disputed'],
+            [(string) $unchecked->id, (string) $customer->id, '00042', '2026-12-01', 'HUF', '120000', '', 'unchecked', '', '0'],
+            [(string) $paid->id, (string) $customer->id, "'+MINTA-1", '2026-12-01', 'HUF', '120000', '0', 'paid', now()->toISOString(), '1'],
         ], $this->rows($response));
     }
 

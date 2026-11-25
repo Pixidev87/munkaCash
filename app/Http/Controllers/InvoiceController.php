@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
+use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Services\ReminderTestQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +35,7 @@ class InvoiceController extends Controller
                 'checkedAt' => $invoice->status_checked_at?->toISOString(),
                 'checker' => $invoice->checker?->name,
                 'revision' => $invoice->revision,
+                'isDisputed' => $invoice->is_disputed,
             ]);
 
         $selectedCustomerId = $request->query('customer');
@@ -107,6 +110,29 @@ class InvoiceController extends Controller
             throw ValidationException::withMessages([
                 'outstanding_amount' => 'A számla közben változott. Ellenőrizd a friss egyenleget, majd próbáld újra.',
             ])->errorBag($bag);
+        }
+
+        return back();
+    }
+
+    public function updateDispute(UpdateInvoiceDisputeRequest $request, string $organization, string $invoice, ReminderTestQueue $queue): RedirectResponse
+    {
+        $company = $request->user()->findActiveOrganization($organization);
+        $selected = $company->invoices()->lockForUpdate()->findOrFail($invoice);
+
+        if ($selected->revision !== $request->revision()) {
+            throw ValidationException::withMessages([
+                'revision' => 'A számla közben változott. Ellenőrizd a friss állapotot, majd próbáld újra.',
+            ])->errorBag($request->errorBagName());
+        }
+
+        $disputed = $request->isDisputed();
+        if ($selected->is_disputed !== $disputed) {
+            $selected->increment('revision', 1, ['is_disputed' => $disputed]);
+        }
+
+        if ($disputed) {
+            $queue->blockPendingForInvoice($selected);
         }
 
         return back();

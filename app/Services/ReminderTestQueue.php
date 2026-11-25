@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ReminderTestDeliveryStatus as Status;
 use App\Jobs\SendReminderTest;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
@@ -21,6 +22,17 @@ class ReminderTestQueue
             $invoices->where('customer_id', $customer->id);
         }
 
+        $this->blockPendingForInvoices($invoices->getQuery(), $reason);
+    }
+
+    public function blockPendingForInvoice(Invoice $invoice): void
+    {
+        $this->blockPendingForInvoices(Invoice::query()->whereKey($invoice->id)->select('id'), ReminderDeliveryControls::INVOICE_DISPUTED);
+    }
+
+    /** @param Builder<Invoice> $invoices */
+    private function blockPendingForInvoices(Builder $invoices, string $reason): void
+    {
         $deliveries = ReminderTestDelivery::query()
             ->whereIn('reminder_approval_id', ReminderApproval::query()->select('id')->whereIn('invoice_id', $invoices));
 
