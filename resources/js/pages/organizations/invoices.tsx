@@ -26,6 +26,7 @@ type Props = {
         customerId: string;
         disputed: boolean;
         overdue: boolean;
+        awaitingBalance: boolean;
     };
     invoices: {
         data: Invoice[];
@@ -50,7 +51,8 @@ export default function InvoicesPage({
         filters.source ||
         filters.customerId ||
         filters.disputed ||
-        filters.overdue,
+        filters.overdue ||
+        filters.awaitingBalance,
     );
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
@@ -336,10 +338,20 @@ export default function InvoicesPage({
                                 />
                                 Csak lejárt, ellenőrzött, nem vitatott számlák
                             </label>
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="awaiting_balance"
+                                    value="1"
+                                    defaultChecked={filters.awaitingBalance}
+                                />
+                                Csak egyenleg-ellenőrzésre váró számlák
+                            </label>
                             <InputError
                                 message={
                                     errors.disputed ??
                                     errors.overdue ??
+                                    errors.awaiting_balance ??
                                     errors.page
                                 }
                             />
