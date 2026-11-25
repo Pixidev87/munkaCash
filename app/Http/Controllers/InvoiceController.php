@@ -33,7 +33,9 @@ class InvoiceController extends Controller
             'outstanding_desc' => ['outstanding_amount', 'desc'],
             default => ['id', 'desc'],
         };
-        $invoices = $invoiceList->matching($company, $filters)
+        $matching = $invoiceList->matching($company, $filters);
+        $totals = $invoiceList->totals($matching);
+        $invoices = $matching
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->orderBy($sortColumn, $sortDirection)
             ->when($sortColumn !== 'id', fn ($query) => $query->latest('id'))
@@ -70,6 +72,7 @@ class InvoiceController extends Controller
                 ]),
             'selectedCustomerId' => is_string($selectedCustomerId) ? $selectedCustomerId : '',
             'invoices' => $invoices,
+            'totals' => $totals,
             'filters' => [
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',

@@ -13,6 +13,12 @@ import { create as createImport } from '@/routes/organizations/invoice-imports';
 import { store as storeCustomer } from '@/routes/organizations/customers';
 import { index, store as storeInvoice } from '@/routes/organizations/invoices';
 
+const huf = new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    maximumFractionDigits: 0,
+});
+
 type NamedRecord = { id: string; name: string };
 
 type Props = {
@@ -32,6 +38,7 @@ type Props = {
         dueFrom: string;
         dueTo: string;
     };
+    totals: { count: number; unchecked: number; outstanding: string };
     invoices: {
         data: Invoice[];
         prev_page_url: string | null;
@@ -45,6 +52,7 @@ export default function InvoicesPage({
     selectedCustomerId,
     filters,
     invoices,
+    totals,
 }: Props) {
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
@@ -447,6 +455,31 @@ export default function InvoicesPage({
                         </>
                     )}
                 </Form>
+                <dl
+                    aria-label="Találatok összesítése"
+                    className="grid gap-3 rounded-xl border p-4 text-sm sm:grid-cols-3"
+                >
+                    <div>
+                        <dt className="text-muted-foreground">Találatok</dt>
+                        <dd className="font-semibold">{totals.count} számla</dd>
+                    </div>
+                    <div>
+                        <dt className="text-muted-foreground">
+                            Egyenleg-ellenőrzésre vár
+                        </dt>
+                        <dd className="font-semibold">
+                            {totals.unchecked} számla
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-muted-foreground">
+                            Ellenőrzött, nem vitatott fennálló összeg
+                        </dt>
+                        <dd className="font-semibold">
+                            {huf.format(BigInt(totals.outstanding))}
+                        </dd>
+                    </div>
+                </dl>
                 {invoices.data.length ? (
                     <ul className="space-y-3">
                         {invoices.data.map((invoice) => (

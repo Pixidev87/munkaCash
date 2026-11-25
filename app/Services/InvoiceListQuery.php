@@ -31,4 +31,29 @@ class InvoiceListQuery
             ->when(isset($filters['due_from']), fn ($query) => $query->whereDate('due_date', '>=', $filters['due_from']))
             ->when(isset($filters['due_to']), fn ($query) => $query->whereDate('due_date', '<=', $filters['due_to']));
     }
+
+    /**
+     * @param  Builder<Invoice>  $matching
+     * @return array{count: int, unchecked: int, outstanding: string}
+     */
+    public function totals(Builder $matching): array
+    {
+        $totals = (clone $matching)->toBase()
+            ->selectRaw('COUNT(*) AS found')
+            ->selectRaw(
+                'COUNT(CASE WHEN currency = ? AND (status_checked_at IS NULL OR outstanding_amount IS NULL) THEN 1 END) AS unchecked',
+                ['HUF'],
+            )
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN currency = ? AND status_checked_at IS NOT NULL AND is_disputed = ? THEN outstanding_amount END), 0) AS outstanding',
+                ['HUF', false],
+            )
+            ->first();
+
+        return [
+            'count' => (int) ($totals->found ?? 0),
+            'unchecked' => (int) ($totals->unchecked ?? 0),
+            'outstanding' => (string) ($totals->outstanding ?? 0),
+        ];
+    }
 }
