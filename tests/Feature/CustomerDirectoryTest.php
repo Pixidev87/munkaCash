@@ -72,6 +72,26 @@ class CustomerDirectoryTest extends TestCase
             ->assertRedirect($list)->assertSessionHasErrorsIn('customerFilters', 'name');
     }
 
+    public function test_a_member_can_create_a_customer_from_the_directory_and_open_its_contact(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+
+        $create = route('organizations.customers.store', $company);
+        $list = route('organizations.customers.index', $company);
+        $this->actingAs($member)->from($list)->post($create, ['origin' => 'directory'])
+            ->assertRedirect($list)->assertSessionHasErrorsIn('customer', 'display_name');
+        $this->post($create, ['display_name' => 'Új partner', 'origin' => 'https://example.test'])
+            ->assertSessionHasErrorsIn('customer', 'origin');
+        $this->assertDatabaseCount('customers', 0);
+
+        $response = $this->post($create, ['display_name' => 'Új partner', 'origin' => 'directory']);
+        $customer = $company->customers()->sole();
+        $response->assertRedirect(route('organizations.customers.billing-contact.edit', [$company, $customer]));
+        $this->get($list)->assertInertia(fn (Assert $page) => $page->where('customers.data.0.name', 'Új partner'));
+    }
+
     public function test_directory_remains_readable_only_until_the_closeout_deadline(): void
     {
         $this->freezeSecond();
