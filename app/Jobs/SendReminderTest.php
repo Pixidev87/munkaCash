@@ -76,7 +76,11 @@ class SendReminderTest implements ShouldQueue
                 $draft = $preview->prepare($company, $invoice);
                 $approvalStatus = $status->evaluate($company, $approval, $draft['fingerprint']);
                 if ($approvalStatus !== 'active' || $draft['message'] === null) {
-                    $this->finish(Status::Blocked, $approvalStatus === 'expired' ? 'approval_expired' : 'approval_changed');
+                    $this->finish(Status::Blocked, match ($approvalStatus) {
+                        'expired' => 'approval_expired',
+                        'revoked' => ReminderDeliveryControls::APPROVAL_REVOKED,
+                        default => 'approval_changed',
+                    });
 
                     return;
                 }

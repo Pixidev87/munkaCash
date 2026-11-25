@@ -7,9 +7,13 @@ use App\Models\ReminderApproval;
 
 class ReminderApprovalStatus
 {
-    /** @return 'expired'|'invalidated'|'active' */
+    /** @return 'revoked'|'expired'|'invalidated'|'active' */
     public function evaluate(Organization $company, ReminderApproval $approval, ?string $fingerprint): string
     {
+        if ($approval->revoked_at !== null) {
+            return 'revoked';
+        }
+
         if ($approval->expires_at->lte(now())) {
             return 'expired';
         }

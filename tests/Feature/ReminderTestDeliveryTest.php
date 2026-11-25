@@ -133,6 +133,45 @@ class ReminderTestDeliveryTest extends TestCase
         ]);
     }
 
+    public function test_only_an_owner_can_revoke_the_current_approval_and_stop_its_pending_delivery(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        [, , $foreignInvoice, $foreignApproval] = $this->approvedDraft();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active', 'role' => 'member']);
+        $revoke = route('organizations.invoices.reminder-approval.destroy', [$company, $invoice]);
+        $preview = route('organizations.invoices.reminder-preview', [$company, $invoice]);
+        $payload = ['approval_id' => $approval->id];
+
+        $this->actingAs($member)->delete($revoke, $payload)->assertForbidden();
+        $this->actingAs($owner)->delete(route('organizations.invoices.reminder-approval.destroy', [$company, $foreignInvoice]), [
+            'approval_id' => $foreignApproval->id,
+        ])->assertNotFound();
+        $this->delete($revoke, ['approval_id' => $foreignApproval->id])->assertSessionHasErrorsIn('approvalRevocation', 'approval_id');
+
+        $this->delete($revoke, $payload)->assertRedirect($preview);
+        $revokedAt = $approval->refresh()->revoked_at;
+        $this->assertNotNull($revokedAt);
+        $this->assertDatabaseHas('reminder_approvals', ['id' => $approval->id, 'revoked_by' => $owner->id]);
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'approval_revoked',
+        ]);
+        $this->travel(1)->minutes();
+        $this->delete($revoke, $payload)->assertRedirect($preview);
+        $this->assertEquals($revokedAt, $approval->refresh()->revoked_at);
+
+        $this->post(route('organizations.invoices.reminder-test-delivery', [$company, $invoice]), $payload)
+            ->assertSessionHasErrors('delivery');
+        $response = $this->get($preview)->assertInertia(fn (Assert $page) => $page->where('approval.status', 'revoked'));
+        $this->post(route('organizations.invoices.reminder-approval', [$company, $invoice]), [
+            'fingerprint' => $response->inertiaProps('fingerprint'),
+            'previous_approval_id' => $approval->id,
+        ])->assertSessionHasNoErrors();
+        $this->delete($revoke, $payload)->assertSessionHasErrorsIn('approvalRevocation', 'approval_id');
+        $this->get($preview)->assertInertia(fn (Assert $page) => $page->where('approval.status', 'active'));
+    }
+
     public function test_uncertain_transport_and_abandoned_claims_are_not_retried(): void
     {
         [, , , $approval] = $this->approvedDraft();

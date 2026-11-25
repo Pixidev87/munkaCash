@@ -7,6 +7,7 @@ import {
 } from '@/lib/reminder-delivery';
 import { Button } from '@/components/ui/button';
 import { edit } from '@/routes/organizations/customers/billing-contact';
+import { destroy as revokeApproval } from '@/routes/organizations/invoices/reminder-approval';
 import {
     index,
     reminderApproval,
@@ -44,7 +45,7 @@ type Props = {
     } | null;
     approval: {
         id: string;
-        status: 'active' | 'expired' | 'invalidated';
+        status: 'active' | 'expired' | 'invalidated' | 'revoked';
         approvedBy: string | null;
         approvedAt: string;
         expiresAt: string;
@@ -64,6 +65,7 @@ const checkedDate = new Intl.DateTimeFormat('hu-HU', {
 
 const approvalLabels = {
     active: 'Jóváhagyva',
+    revoked: 'A jóváhagyás visszavonva',
     expired: 'A jóváhagyás lejárt',
     invalidated: 'A korábbi jóváhagyás érvénytelen',
 };
@@ -226,6 +228,36 @@ export default function ReminderPreviewPage({
                                 )}
                             </time>
                         </p>
+                    )}
+                    {canApprove && approval.status === 'active' && (
+                        <Form
+                            {...revokeApproval.form({
+                                organization: organizationId,
+                                invoice: invoiceId,
+                            })}
+                            errorBag="approvalRevocation"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="approval_id"
+                                        value={approval.id}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="outline"
+                                        disabled={processing}
+                                    >
+                                        Jóváhagyás visszavonása
+                                    </Button>
+                                    <InputError
+                                        message={errors.approval_id}
+                                        role="alert"
+                                    />
+                                </>
+                            )}
+                        </Form>
                     )}
                 </section>
             )}
