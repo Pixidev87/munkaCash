@@ -60,12 +60,13 @@ case ${1:-} in
         touch "$database"
         pilot_php artisan migrate --force
         ;;
-    demo|web|mail|scheduler|worker)
+    demo|web|mail|scheduler|worker|check)
         if [[ ! -s "$key" || ! -f "$database" ]]; then
             echo 'Run bash bin/pilot init before starting the pilot.' >&2
             exit 2
         fi
         case $1 in
+            check) pilot_php artisan munkacash:pilot:check ;;
             demo) pilot_php artisan munkacash:demo ;;
             web)
                 if [[ ! -f public/build/manifest.json || -e public/hot ]]; then
@@ -83,7 +84,7 @@ case ${1:-} in
         esac
         ;;
     *)
-        echo 'Usage: bash bin/pilot {init|demo|web|mail|scheduler|worker}' >&2
+        echo 'Usage: bash bin/pilot {init|demo|web|mail|scheduler|worker|check}' >&2
         exit 2
         ;;
 esac
