@@ -28,6 +28,7 @@ class FilterInvoicesRequest extends FormRequest
             'awaiting_balance' => ['nullable', 'in:1'],
             'billing_unconfirmed' => ['nullable', 'in:1'],
             'overdue' => ['nullable', 'in:1'],
+            'sort' => ['nullable', 'in:due_asc,due_desc,outstanding_desc'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
     }
@@ -44,6 +45,7 @@ class FilterInvoicesRequest extends FormRequest
             'billing_unconfirmed.*' => 'A pénzügyi cím szűrője érvénytelen.',
             'overdue.*' => 'A lejárt számlák szűrője érvénytelen.',
             'disputed.*' => 'A vitatott számlák szűrője érvénytelen.',
+            'sort.*' => 'Válassz érvényes rendezési sorrendet.',
             'page.*' => 'Az oldalszám legyen pozitív egész szám.',
         ];
     }

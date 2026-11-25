@@ -26,7 +26,13 @@ class InvoiceController extends Controller
     public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id', 'awaiting_balance', 'billing_unconfirmed', 'sort']);
+        [$sortColumn, $sortDirection] = match ($filters['sort'] ?? null) {
+            'due_asc' => ['due_date', 'asc'],
+            'due_desc' => ['due_date', 'desc'],
+            'outstanding_desc' => ['outstanding_amount', 'desc'],
+            default => ['id', 'desc'],
+        };
         $invoices = $company->invoices()
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
             ->when(isset($filters['customer_id']), fn ($query) => $query->where('customer_id', (int) $filters['customer_id']))
@@ -40,7 +46,8 @@ class InvoiceController extends Controller
             ->when(isset($filters['billing_unconfirmed']), fn ($query) => $query
                 ->whereIn('customer_id', $company->customers()->withoutConfirmedBillingAddress()->select('id')))
             ->with(['customer:id,display_name', 'checker:id,name'])
-            ->latest('id')
+            ->orderBy($sortColumn, $sortDirection)
+            ->when($sortColumn !== 'id', fn ($query) => $query->latest('id'))
             ->simplePaginate(25)
             ->appends($filters)
             ->through(fn (Invoice $invoice): array => [
@@ -81,6 +88,7 @@ class InvoiceController extends Controller
                 'disputed' => isset($filters['disputed']),
                 'overdue' => isset($filters['overdue']),
                 'awaitingBalance' => isset($filters['awaiting_balance']),
+                'sort' => $filters['sort'] ?? '',
                 'billingUnconfirmed' => isset($filters['billing_unconfirmed']),
             ],
         ]);

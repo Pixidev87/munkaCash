@@ -28,6 +28,7 @@ type Props = {
         overdue: boolean;
         awaitingBalance: boolean;
         billingUnconfirmed: boolean;
+        sort: string;
     };
     invoices: {
         data: Invoice[];
@@ -54,7 +55,8 @@ export default function InvoicesPage({
         filters.disputed ||
         filters.overdue ||
         filters.awaitingBalance ||
-        filters.billingUnconfirmed,
+        filters.billingUnconfirmed ||
+        filters.sort,
     );
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
@@ -320,6 +322,31 @@ export default function InvoicesPage({
                                         ))}
                                     </select>
                                     <InputError message={errors.customer_id} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-invoice-sort">
+                                        Rendezés
+                                    </Label>
+                                    <select
+                                        id="filter-invoice-sort"
+                                        name="sort"
+                                        defaultValue={filters.sort}
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    >
+                                        <option value="">
+                                            Legutóbb rögzítettek elöl
+                                        </option>
+                                        <option value="due_asc">
+                                            Határidő szerint növekvő
+                                        </option>
+                                        <option value="due_desc">
+                                            Határidő szerint csökkenő
+                                        </option>
+                                        <option value="outstanding_desc">
+                                            Legnagyobb fennálló összeg elöl
+                                        </option>
+                                    </select>
+                                    <InputError message={errors.sort} />
                                 </div>
                             </div>
                             <label className="flex items-center gap-2 text-sm">
