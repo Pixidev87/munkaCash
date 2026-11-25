@@ -27,13 +27,16 @@ export default function Customers({
     filters,
 }: {
     organization: { id: string; name: string };
-    filters: { name: string };
+    filters: { name: string; billingContact: string; blocked: boolean };
     customers: {
         data: Customer[];
         prev_page_url: string | null;
         next_page_url: string | null;
     };
 }) {
+    const hasFilters =
+        filters.name || filters.billingContact || filters.blocked;
+
     return (
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Ügyfelek · ${organization.name}`} />
@@ -64,6 +67,37 @@ export default function Customers({
                             />
                             <InputError message={errors.name} />
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="billing-contact-filter">
+                                Pénzügyi cím állapota
+                            </Label>
+                            <select
+                                id="billing-contact-filter"
+                                name="billing_contact"
+                                defaultValue={filters.billingContact}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Összes állapot</option>
+                                {Object.entries(billingLabels).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                            <InputError message={errors.billing_contact} />
+                        </div>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                name="blocked"
+                                value="1"
+                                defaultChecked={filters.blocked}
+                            />
+                            Csak letiltott emlékeztetőjű ügyfelek
+                        </label>
+                        <InputError message={errors.blocked} />
                         <div className="flex flex-wrap items-center gap-3">
                             <Button
                                 type="submit"
@@ -72,12 +106,12 @@ export default function Customers({
                             >
                                 Keresés
                             </Button>
-                            {filters.name && (
+                            {hasFilters && (
                                 <Link
                                     className="text-sm underline"
                                     href={index(organization.id)}
                                 >
-                                    Keresés törlése
+                                    Szűrők törlése
                                 </Link>
                             )}
                         </div>
@@ -127,7 +161,7 @@ export default function Customers({
                 </ul>
             ) : (
                 <p className="text-sm text-muted-foreground">
-                    {filters.name
+                    {hasFilters
                         ? 'Nincs a keresésnek megfelelő ügyfél.'
                         : 'Ezen az oldalon nincs ügyfél.'}
                 </p>
