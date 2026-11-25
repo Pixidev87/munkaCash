@@ -65,7 +65,10 @@ class PilotDemoTest extends TestCase
             'csv' => UploadedFile::fake()->createWithContent('pilot.csv', InvoiceCsvParser::HEADER."\n".$csv[0]),
         ])->assertSessionHasNoErrors();
         $batch = InvoiceImport::query()->sole();
-        $this->post(route('organizations.invoice-imports.confirm', [$company, $batch]))->assertSessionHasNoErrors();
+        $preview = $this->get(route('organizations.invoice-imports.show', [$company, $batch]));
+        $this->post(route('organizations.invoice-imports.confirm', [$company, $batch]), [
+            'preview_token' => $preview->inertiaProps('previewToken'),
+        ])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('invoices', ['organization_id' => $company->id, 'invoice_number' => 'DEMO-CSV-003', 'source' => 'csv']);
 
         $this->actingAs($otherOwner)->get(route('organizations.show', $company))->assertNotFound();

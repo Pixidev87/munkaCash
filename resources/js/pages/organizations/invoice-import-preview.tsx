@@ -40,6 +40,7 @@ type Props = {
     expiresAt: string;
     rows: PreviewRow[];
     canImport: boolean;
+    previewToken: string | null;
     previewCounts: Record<keyof typeof statusLabels, number> | null;
     summary: {
         created: number;
@@ -67,6 +68,7 @@ export default function InvoiceImportPreview({
     expiresAt,
     rows,
     canImport,
+    previewToken,
     previewCounts,
     summary,
 }: Props) {
@@ -222,6 +224,11 @@ export default function InvoiceImportPreview({
                     >
                         {({ errors, processing }) => (
                             <>
+                                <input
+                                    type="hidden"
+                                    name="preview_token"
+                                    value={previewToken ?? ''}
+                                />
                                 <p className="text-sm text-muted-foreground">
                                     {organizationReadOnly
                                         ? 'Az írásvédett céghez az import nem erősíthető meg.'
@@ -240,7 +247,9 @@ export default function InvoiceImportPreview({
                                     Import megerősítése
                                 </Button>
                                 <InputError
-                                    message={errors.import}
+                                    message={
+                                        errors.import ?? errors.preview_token
+                                    }
                                     role="alert"
                                 />
                             </>

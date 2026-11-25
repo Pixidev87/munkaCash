@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Invoices\ConfirmInvoiceImportRequest;
 use App\Http\Requests\Invoices\DiscardInvoiceImportRequest;
 use App\Http\Requests\Invoices\DownloadInvoiceTemplateRequest;
 use App\Http\Requests\Invoices\FilterInvoiceImportsRequest;
@@ -124,6 +125,7 @@ class InvoiceImportController extends Controller
         $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->findOrFail($import);
         $rows = $batch->rows === null ? [] : $service->preview($company, $batch->rows);
         $counts = array_count_values(array_column($rows, 'status'));
+        $canImport = $service->canImport($rows);
 
         return Inertia::render('organizations/invoice-import-preview', [
             'organizationId' => $organization,
@@ -142,7 +144,8 @@ class InvoiceImportController extends Controller
                 'invalid' => $counts['invalid'] ?? 0,
                 'conflict' => $counts['conflict'] ?? 0,
             ],
-            'canImport' => $service->canImport($rows),
+            'canImport' => $canImport,
+            'previewToken' => $canImport ? $service->previewToken($batch, $rows) : null,
             'summary' => $batch->rows === null ? [
                 'confirmedAt' => $batch->confirmed_at?->toISOString(),
                 'hasTrackedInvoices' => $company->invoices()->where('invoice_import_id', $batch->id)->exists(),
@@ -188,13 +191,14 @@ class InvoiceImportController extends Controller
         return SpreadsheetCsv::download('munkacash-importhibak.csv', ['line', 'column', 'code', 'message'], $errors);
     }
 
-    public function confirm(Request $request, string $organization, string $import, InvoiceCsvImport $service): RedirectResponse
+    public function confirm(ConfirmInvoiceImportRequest $request, string $organization, string $import, InvoiceCsvImport $service): RedirectResponse
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
 
+        $previewToken = (string) $request->validated('preview_token');
         try {
-            DB::transaction(function () use ($company, $user, $import, $service): void {
+            DB::transaction(function () use ($company, $user, $import, $service, $previewToken): void {
                 $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->lockForUpdate()->findOrFail($import);
                 if ($batch->rows === null) {
                     return;
@@ -203,6 +207,10 @@ class InvoiceImportController extends Controller
                 $rows = $service->preview($company, $batch->rows);
                 if (! $service->canImport($rows)) {
                     throw ValidationException::withMessages(['import' => 'Az import hibás vagy ütköző sorokat tartalmaz. Javítsd a fájlt, majd töltsd fel újra.']);
+                }
+
+                if (! hash_equals($service->previewToken($batch, $rows), $previewToken)) {
+                    throw ValidationException::withMessages(['import' => 'Az előnézet közben megváltozott. Nézd át a friss előnézetet, majd erősítsd meg újra az importot.']);
                 }
 
                 $confirmedAt = now()->toImmutable();

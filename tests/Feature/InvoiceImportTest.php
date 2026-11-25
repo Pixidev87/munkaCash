@@ -442,6 +442,28 @@ class InvoiceImportTest extends TestCase
         $this->get($url)->assertNotFound();
     }
 
+    public function test_a_stale_preview_must_be_reviewed_again_before_creating_any_invoices(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user);
+        $batch = $this->upload($company, "{$customer};NEW;2026-12-01;HUF;120000
+{$customer};RACE;2026-12-01;HUF;120000");
+        $preview = route('organizations.invoice-imports.show', [$company, $batch]);
+        $confirm = route('organizations.invoice-imports.confirm', [$company, $batch]);
+        $token = $this->get($preview)->inertiaProps('previewToken');
+
+        $company->invoices()->create([
+            'customer_id' => $customer, 'invoice_number' => 'RACE', 'due_date' => '2026-12-01', 'gross_amount' => 120000,
+        ]);
+        $this->from($preview)->post($confirm, ['preview_token' => $token])
+            ->assertRedirect($preview)->assertSessionHasErrors('import');
+        $this->assertDatabaseMissing('invoices', ['invoice_number' => 'NEW']);
+
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('invoices', ['invoice_number' => 'NEW']);
+        $this->assertSame(1, $batch->fresh()->unchanged_count);
+    }
+
     /** @return array{Organization, User, int} */
     private function createCompany(): array
     {
@@ -463,6 +485,10 @@ class InvoiceImportTest extends TestCase
 
     private function confirm(Organization $company, InvoiceImport $batch): TestResponse
     {
-        return $this->post(route('organizations.invoice-imports.confirm', [$company, $batch]));
+        $preview = $this->get(route('organizations.invoice-imports.show', [$company, $batch]));
+
+        return $this->post(route('organizations.invoice-imports.confirm', [$company, $batch]), [
+            'preview_token' => $preview->isSuccessful() ? $preview->inertiaProps('previewToken') : null,
+        ]);
     }
 }

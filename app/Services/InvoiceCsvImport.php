@@ -6,6 +6,7 @@ use App\Enums\InvoiceSource;
 use App\Models\Invoice;
 use App\Models\InvoiceImport;
 use App\Models\Organization;
+use Illuminate\Support\Facades\Config;
 
 /**
  * @phpstan-import-type StoredCsvRow from InvoiceCsvParser
@@ -97,6 +98,12 @@ class InvoiceCsvImport
         }
 
         return $errors;
+    }
+
+    /** @param list<PreviewRow> $rows */
+    public function previewToken(InvoiceImport $batch, array $rows): string
+    {
+        return hash_hmac('sha256', json_encode([$batch->id, $rows], JSON_THROW_ON_ERROR), Config::string('app.key'));
     }
 
     /** @param list<PreviewRow> $rows */
