@@ -106,11 +106,27 @@ export default function InvoiceImportPreview({
                 >
                     <p>Létrehozva: {summary.created} számla</p>
                     <p>Változatlan: {summary.unchanged} számla</p>
-                    <Button asChild>
-                        <Link href={index(organizationId)}>
-                            Vissza a számlákhoz
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        {summary.created > 0 && !organizationReadOnly && (
+                            <Button asChild>
+                                <Link
+                                    href={index(organizationId, {
+                                        query: {
+                                            source: 'csv',
+                                            awaiting_balance: 1,
+                                        },
+                                    })}
+                                >
+                                    CSV-számlák egyenlegének ellenőrzése
+                                </Link>
+                            </Button>
+                        )}
+                        <Button asChild variant="outline">
+                            <Link href={index(organizationId)}>
+                                Vissza a számlákhoz
+                            </Link>
+                        </Button>
+                    </div>
                 </section>
             ) : (
                 <>
