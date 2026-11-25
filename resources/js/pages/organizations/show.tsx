@@ -41,6 +41,7 @@ export default function OrganizationPage({
     balanceSummary: {
         outstanding: string;
         overdue: string;
+        overdueWithoutConfirmedAddress: number;
         disputed: string;
         unchecked: number;
     } | null;
@@ -130,6 +131,40 @@ export default function OrganizationPage({
                             </dt>
                             <dd className="mt-1 font-semibold">
                                 {balanceSummary.unchecked} számla
+                            </dd>
+                            <dd className="mt-1">
+                                <Link
+                                    className="underline"
+                                    href={index(organizationId, {
+                                        query: { awaiting_balance: 1 },
+                                    })}
+                                >
+                                    Egyenleg-ellenőrzésre váró számlák
+                                    megnyitása
+                                </Link>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="text-muted-foreground">
+                                Lejárt, ellenőrzött, nem vitatott számlák
+                                megerősített pénzügyi cím nélkül
+                            </dt>
+                            <dd className="mt-1 font-semibold">
+                                {balanceSummary.overdueWithoutConfirmedAddress}{' '}
+                                számla
+                            </dd>
+                            <dd className="mt-1">
+                                <Link
+                                    className="underline"
+                                    href={index(organizationId, {
+                                        query: {
+                                            overdue: 1,
+                                            billing_unconfirmed: 1,
+                                        },
+                                    })}
+                                >
+                                    Lejárt számlák címellenőrzéshez
+                                </Link>
                             </dd>
                         </div>
                     </dl>

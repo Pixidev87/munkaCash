@@ -9,7 +9,7 @@ class OrganizationBalanceSummary
 {
     public function __construct(private readonly OverdueInvoices $overdueInvoices) {}
 
-    /** @return array{outstanding: string, overdue: string, disputed: string, unchecked: int} */
+    /** @return array{outstanding: string, overdue: string, disputed: string, unchecked: int, overdueWithoutConfirmedAddress: int} */
     public function forOrganization(Organization $company): array
     {
         $openStatuses = [InvoiceStatus::Open->value, InvoiceStatus::PartiallyPaid->value];
@@ -28,12 +28,15 @@ class OrganizationBalanceSummary
             )
             ->first();
 
+        $unconfirmedCustomers = $company->customers()->withoutConfirmedBillingAddress()->select('id')->toBase();
         $overdue = $this->overdueInvoices->queryFor($company)
-            ->selectRaw('COALESCE(SUM(outstanding_amount), 0) AS total')
+            ->leftJoinSub($unconfirmedCustomers, 'unconfirmed_customers', 'invoices.customer_id', '=', 'unconfirmed_customers.id')
+            ->selectRaw('COALESCE(SUM(invoices.outstanding_amount), 0) AS total, COUNT(unconfirmed_customers.id) AS without_confirmed_address')
             ->first();
 
         return [
             'overdue' => (string) ($overdue->total ?? 0),
+            'overdueWithoutConfirmedAddress' => (int) ($overdue->without_confirmed_address ?? 0),
             'outstanding' => (string) ($balances->outstanding ?? 0),
             'disputed' => (string) ($balances->disputed ?? 0),
             'unchecked' => (int) ($balances->unchecked ?? 0),
