@@ -9,6 +9,7 @@ import {
 } from '@/routes/organizations/customers';
 import {
     confirm,
+    revoke,
     update,
 } from '@/routes/organizations/customers/billing-contact';
 import { index } from '@/routes/organizations/invoices';
@@ -149,6 +150,34 @@ export default function BillingContactPage({
                                             errors.billing_email ??
                                             errors.revision
                                         }
+                                        role="alert"
+                                    />
+                                </>
+                            )}
+                        </Form>
+                    )}
+                    {!organizationReadOnly && customer.confirmed && (
+                        <Form
+                            {...revoke.form(routeArgs)}
+                            errorBag="revocation"
+                            className="space-y-2"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="revision"
+                                        value={customer.revision}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="outline"
+                                        disabled={processing}
+                                    >
+                                        Megerősítés visszavonása
+                                    </Button>
+                                    <InputError
+                                        message={errors.revision}
                                         role="alert"
                                     />
                                 </>

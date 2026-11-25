@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                         Route::get('/', [BillingContactController::class, 'edit'])->name('edit');
                         Route::patch('/', [BillingContactController::class, 'update'])->name('update');
                         Route::post('confirm', [BillingContactController::class, 'confirm'])->name('confirm');
+                        Route::delete('confirm', [BillingContactController::class, 'revoke'])->name('revoke');
                     });
                 Route::get('invoices/{invoice}/reminder-preview', [ReminderPreviewController::class, 'show'])
                     ->whereNumber('invoice')

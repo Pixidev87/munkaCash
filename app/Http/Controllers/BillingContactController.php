@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Customers\ConfirmBillingContactRequest;
+use App\Http\Requests\Customers\RevokeBillingContactConfirmationRequest;
 use App\Http\Requests\Customers\UpdateBillingContactRequest;
 use App\Models\Customer;
 use App\Services\ReminderDeliveryControls;
@@ -95,6 +96,38 @@ class BillingContactController extends Controller
             if ($updated === 0) {
                 $this->changedContact('confirmation');
             }
+        }
+
+        return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);
+    }
+
+    public function revoke(
+        RevokeBillingContactConfirmationRequest $request,
+        string $organization,
+        string $customer,
+        ReminderTestQueue $queue,
+    ): RedirectResponse {
+        $company = $request->user()->findActiveOrganization($organization);
+        $contact = $company->customers()->findOrFail($customer);
+        $revision = (int) $request->validated('revision');
+
+        if ($contact->billing_email_revision !== $revision) {
+            $this->changedContact('revocation');
+        }
+
+        if ($contact->billing_email_confirmed_at !== null) {
+            $updated = Customer::query()->whereKey($contact->id)
+                ->where('billing_email_revision', $revision)
+                ->increment('billing_email_revision', 1, [
+                    'billing_email_confirmed_at' => null,
+                    'billing_email_confirmed_by' => null,
+                ]);
+
+            if ($updated === 0) {
+                $this->changedContact('revocation');
+            }
+
+            $queue->blockPending($company, ReminderDeliveryControls::BILLING_CONFIRMATION_REVOKED, $contact);
         }
 
         return to_route('organizations.customers.billing-contact.edit', [$organization, $customer]);
