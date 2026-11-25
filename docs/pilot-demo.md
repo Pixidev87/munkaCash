@@ -22,7 +22,7 @@ A parancs kiírja a cégek azonosítóit, a három bejelentkezéshez tartozó eg
 3. Lépj be külön böngészőprofilban a Duna Stúdió tulajdonosaként. A saját `DEMO-001` számlája 90 000 Ft-os. A Hárs Műhely számlaoldalának elmentett linkje ebből a fiókból nem nyílik meg. A Hárs Műhely munkatársa megnyithatja a Hárs Műhely számláit, a tulajdonosi exporthoz viszont csak a tulajdonos fér hozzá.
 4. Tesztlevélhez a Hárs Műhely tulajdonosa engedélyezheti az emlékeztetőket és jóváhagyhatja az első levélelőnézetet. A tesztküldést a munkanaptár és a 30 perces jóváhagyási ablak szabályozza. A feldolgozáshoz az ütemező és a `reminder-tests` sorhoz tartozó feldolgozó fusson. A fogadott tesztlevél a helyi Mailpit felületén ellenőrizhető.
 
-A demó létrehozásakor mindkét cég küldése szünetel, jóváhagyás és küldési feladat nem keletkezik. A teszt a munkatársi tagság visszavonása utáni hozzáférésvesztést is ellenőrzi.
+A demó létrehozásakor mindkét cég küldése szünetel, jóváhagyás és küldési feladat nem keletkezik. A hozzáférés visszavonását a Hárs Műhely tulajdonosa a **Munkatársak kezelése** oldalon próbálhatja ki. A megerősítés után frissítsd a munkatárs böngészőjét. A Hárs Műhely eltűnik a cégei közül, és az elmentett cégoldalt sem tudja megnyitni.
 
 ## Határidő és munkanaptár
 

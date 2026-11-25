@@ -7,6 +7,7 @@ use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationCloseoutController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationExportController;
+use App\Http\Controllers\OrganizationMemberController;
 use App\Http\Controllers\ReminderDeliveryLogController;
 use App\Http\Controllers\ReminderDeliverySettingsController;
 use App\Http\Controllers\ReminderPreviewController;
@@ -33,6 +34,10 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 ->name('exports.invoices');
             Route::post('closeout', [OrganizationCloseoutController::class, 'store'])->name('closeout');
             Route::middleware(EnsureOrganizationOperationsAvailable::class)->group(function () {
+                Route::get('members', [OrganizationMemberController::class, 'index'])->name('members.index');
+                Route::delete('members/{member}', [OrganizationMemberController::class, 'destroy'])
+                    ->whereNumber('member')
+                    ->name('members.destroy');
                 Route::get('reminder-deliveries', [ReminderDeliveryLogController::class, 'index'])
                     ->name('reminder-deliveries.index');
                 Route::patch('reminder-delivery-settings', [ReminderDeliverySettingsController::class, 'organization'])
