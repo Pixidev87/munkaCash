@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { create, index, show } from '@/routes/organizations/invoice-imports';
@@ -23,9 +24,11 @@ export default function InvoiceImportHistory({
     imports,
     status,
     counts,
+    uploadDates,
 }: {
     organizationId: string;
     status: 'pending' | 'completed' | null;
+    uploadDates: { from: string | null; to: string | null };
     counts: { pending: number; completed: number };
     imports: {
         data: Import[];
@@ -46,7 +49,7 @@ export default function InvoiceImportHistory({
             </h1>
             <Form
                 {...index.form(organizationId)}
-                key={status ?? ''}
+                key={JSON.stringify([status, uploadDates])}
                 className="space-y-3 rounded-xl border p-4"
             >
                 {({ errors, processing }) => (
@@ -68,20 +71,49 @@ export default function InvoiceImportHistory({
                                 <option value="pending">
                                     Megerősítésre vár ({counts.pending})
                                 </option>
-                                <option value="completed">Lezárt import</option>
+                                <option value="completed">
+                                    Lezárt import ({counts.completed})
+                                </option>
                             </select>
                             <InputError
                                 message={errors.status ?? errors.page}
                             />
                         </div>
+                        <fieldset className="grid gap-3 sm:grid-cols-2">
+                            <legend className="mb-2 text-sm font-medium">
+                                Feltöltés dátuma (budapesti idő)
+                            </legend>
+                            <div className="space-y-2">
+                                <Label htmlFor="upload-from">
+                                    Ettől a naptól
+                                </Label>
+                                <Input
+                                    id="upload-from"
+                                    name="uploaded_from"
+                                    type="date"
+                                    defaultValue={uploadDates.from ?? ''}
+                                />
+                                <InputError message={errors.uploaded_from} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="upload-to">Eddig a napig</Label>
+                                <Input
+                                    id="upload-to"
+                                    name="uploaded_to"
+                                    type="date"
+                                    defaultValue={uploadDates.to ?? ''}
+                                />
+                                <InputError message={errors.uploaded_to} />
+                            </div>
+                        </fieldset>
                         <div className="flex flex-wrap gap-2">
                             <Button type="submit" disabled={processing}>
                                 Szűrés
                             </Button>
-                            {status && (
+                            {(status || uploadDates.from || uploadDates.to) && (
                                 <Button asChild variant="outline">
                                     <Link href={index(organizationId)}>
-                                        Szűrő törlése
+                                        Szűrők törlése
                                     </Link>
                                 </Button>
                             )}

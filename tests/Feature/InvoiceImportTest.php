@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\InvoiceCsvParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -462,6 +463,25 @@ class InvoiceImportTest extends TestCase
         $this->confirm($company, $batch)->assertSessionHasNoErrors();
         $this->assertDatabaseHas('invoices', ['invoice_number' => 'NEW']);
         $this->assertSame(1, $batch->fresh()->unchanged_count);
+    }
+
+    public function test_import_history_filters_upload_dates_in_budapest_and_counts_matching_batches(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user)->travelTo(Carbon::parse('2026-11-24 22:59:59', 'UTC'));
+        $earlier = $this->upload($company, "{$customer};FIRST;2026-12-01;HUF;120000");
+        $this->confirm($company, $earlier)->assertSessionHasNoErrors();
+        $this->travel(1)->second();
+        $midnight = $this->upload($company, "{$customer};SECOND;2026-12-01;HUF;120000");
+        $this->confirm($company, $midnight)->assertSessionHasNoErrors();
+
+        $history = 'organizations.invoice-imports.index';
+        $this->get(route($history, [$company, 'uploaded_from' => '2026-11-25', 'uploaded_to' => '2026-11-25']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('counts.completed', 1)->has('imports.data', 1)
+                ->where('imports.data.0.id', $midnight->id));
+        $this->getJson(route($history, [$company, 'uploaded_from' => '2026-11-25', 'uploaded_to' => '2026-11-24']))
+            ->assertUnprocessable()->assertJsonValidationErrors('uploaded_to');
     }
 
     /** @return array{Organization, User, int} */
