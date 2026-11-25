@@ -7,7 +7,7 @@ import { reminderPreview } from '@/routes/organizations/invoices';
 import { update } from '@/routes/organizations/invoices/balance';
 import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
-const statusLabels = {
+export const invoiceStatusLabels = {
     unchecked: 'Ellenőrzés szükséges',
     open: 'Nyitott',
     partially_paid: 'Részben fizetett',
@@ -21,7 +21,7 @@ export type Invoice = {
     dueDate: string;
     gross: number;
     outstanding: number | null;
-    status: keyof typeof statusLabels;
+    status: keyof typeof invoiceStatusLabels;
     checkedAt: string | null;
     checker: string | null;
     revision: number;
@@ -64,7 +64,7 @@ export default function InvoiceCard({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <p className="rounded-md bg-muted px-2 py-1 text-sm">
-                        {statusLabels[invoice.status]}
+                        {invoiceStatusLabels[invoice.status]}
                     </p>
                     {invoice.isDisputed && (
                         <p className="rounded-md border border-amber-500 px-2 py-1 text-sm">

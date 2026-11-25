@@ -183,6 +183,66 @@ class InvoiceTrackingTest extends TestCase
         ]);
     }
 
+    public function test_invoice_filters_combine_within_the_company_and_use_the_complete_invoice_number(): void
+    {
+        $company = Organization::factory()->create();
+        $otherCompany = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $matching = $this->createInvoice($company);
+        $matching->forceFill(['status' => 'open', 'is_disputed' => true, 'invoice_number' => '00042%_'])->save();
+        $foreign = $this->createInvoice($otherCompany);
+        $foreign->forceFill(['status' => 'open', 'is_disputed' => true, 'invoice_number' => '00042%_'])->save();
+        $company->invoices()->create([
+            'customer_id' => $matching->customer_id,
+            'invoice_number' => '000424A',
+            'due_date' => '2026-12-01',
+            'gross_amount' => 120_000,
+        ])->forceFill(['status' => 'open', 'is_disputed' => true])->save();
+        $route = route('organizations.invoices.index', $company);
+
+        $filters = ['invoice_number' => '00042%_', 'status' => 'open', 'disputed' => '1'];
+        $this->actingAs($member)->get($route.'?'.http_build_query($filters))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 1)
+                ->where('invoices.data.0.id', (string) $matching->id)
+                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'disputed' => true]));
+        $this->get($route.'?status=paid&disputed=1')
+            ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
+
+        $this->get(route('organizations.invoices.index', $otherCompany).'?'.http_build_query($filters))->assertNotFound();
+        $this->from($route)->get($route.'?status=invalid&disputed=2&page=0')
+            ->assertRedirect($route)
+            ->assertSessionHasErrorsIn('invoiceFilters', ['status', 'disputed', 'page']);
+    }
+
+    public function test_invoice_pagination_preserves_applied_filters(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $customer = $company->customers()->create(['display_name' => 'Minta Ügyfél']);
+        foreach (range(1, 26) as $number) {
+            $company->invoices()->create([
+                'customer_id' => $customer->id,
+                'invoice_number' => 'DEMO-'.$number,
+                'due_date' => '2026-12-01',
+                'gross_amount' => 10_000,
+            ])->forceFill(['is_disputed' => true])->save();
+        }
+        $this->createInvoice($company);
+        $route = route('organizations.invoices.index', $company);
+        $firstPage = $this->actingAs($member)->get($route.'?status=unchecked&disputed=1')
+            ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 25));
+
+        $next = $firstPage->inertiaProps('invoices.next_page_url');
+        parse_str(parse_url($next, PHP_URL_QUERY), $query);
+        $this->assertSame(['status' => 'unchecked', 'disputed' => '1', 'page' => '2'], $query);
+        $this->get($next)->assertInertia(fn (Assert $page) => $page
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.number', 'DEMO-1'));
+    }
+
     private function createInvoice(Organization $company): Invoice
     {
         $customer = $company->customers()->create(['display_name' => 'Minta Ügyfél']);
