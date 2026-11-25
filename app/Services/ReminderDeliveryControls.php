@@ -25,6 +25,8 @@ class ReminderDeliveryControls
 
     public const string APPROVAL_REVOKED = 'approval_revoked';
 
+    public const string DELIVERY_CANCELLED = 'delivery_cancelled';
+
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {

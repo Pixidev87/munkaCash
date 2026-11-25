@@ -200,6 +200,42 @@ class ReminderTestDeliveryTest extends TestCase
                 ->missing('approvals.data.0.body'));
     }
 
+    public function test_an_owner_can_cancel_only_the_current_pending_delivery_without_revoking_approval(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        [, , , $foreignApproval] = $this->approvedDraft();
+        $foreignDelivery = $foreignApproval->testDelivery()->create(['status' => 'pending']);
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active', 'role' => 'member']);
+        $cancel = route('organizations.invoices.reminder-test-delivery.destroy', [$company, $invoice]);
+        $preview = route('organizations.invoices.reminder-preview', [$company, $invoice]);
+
+        $this->actingAs($member)->delete($cancel, ['delivery_id' => $delivery->id])->assertForbidden();
+        $this->actingAs($owner)->delete($cancel, ['delivery_id' => $foreignDelivery->id])
+            ->assertSessionHasErrorsIn('deliveryCancellation', 'delivery_id');
+
+        $delivery->update(['status' => 'sending']);
+        $this->delete($cancel, ['delivery_id' => $delivery->id])->assertSessionHasErrorsIn('deliveryCancellation', 'delivery_id');
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'sending']);
+
+        $delivery->update(['status' => 'pending']);
+        $this->delete($cancel, ['delivery_id' => $delivery->id])->assertRedirect($preview);
+        $this->delete($cancel, ['delivery_id' => $delivery->id])->assertRedirect($preview);
+
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id, 'status' => 'blocked', 'reason' => 'delivery_cancelled',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $foreignDelivery->id, 'status' => 'pending']);
+        $this->get($preview)->assertInertia(fn (Assert $page) => $page
+            ->where('testDelivery.id', $delivery->id)
+            ->where('testDelivery.reason', 'delivery_cancelled')
+            ->where('approval.status', 'active'));
+
+        $this->mock(ReminderTestMailer::class)->shouldNotReceive('send');
+        app()->call((new SendReminderTest($delivery->id))->handle(...));
+    }
+
     public function test_uncertain_transport_and_abandoned_claims_are_not_retried(): void
     {
         [, , , $approval] = $this->approvedDraft();

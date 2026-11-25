@@ -50,6 +50,7 @@ class ReminderPreviewController extends Controller
             'lastDeliveryAttemptAt' => $timing->lastAttempt($selected)?->toISOString(),
             'testRecipient' => $draft['message'] !== null && $mailer->accepts($draft['message']['recipient']),
             'testDelivery' => $delivery === null ? null : [
+                'id' => $delivery->id,
                 'status' => $delivery->status->value,
                 'reason' => $delivery->reason,
                 'availableAt' => $delivery->available_at?->toISOString(),
