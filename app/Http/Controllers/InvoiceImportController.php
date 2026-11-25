@@ -11,7 +11,6 @@ use App\Models\InvoiceImport;
 use App\Services\InvoiceCsvImport;
 use App\Services\InvoiceCsvParser;
 use App\Services\SpreadsheetCsv;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +28,7 @@ class InvoiceImportController extends Controller
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
         $status = $request->validated('status');
-        $available = $this->availableBatches($company->id, $user->id);
+        $available = InvoiceImport::query()->availableTo($company->id, $user->id);
         $completed = (clone $available)->whereNull('rows')->selectRaw('COUNT(*)');
         $counts = (clone $available)->toBase()
             ->selectRaw('COUNT(*) AS total')
@@ -122,7 +121,7 @@ class InvoiceImportController extends Controller
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
-        $batch = $this->availableBatches($company->id, $user->id)->findOrFail($import);
+        $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->findOrFail($import);
         $rows = $batch->rows === null ? [] : $service->preview($company, $batch->rows);
         $counts = array_count_values(array_column($rows, 'status'));
 
@@ -155,7 +154,7 @@ class InvoiceImportController extends Controller
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
-        $batch = $this->availableBatches($company->id, $user->id)->findOrFail($import);
+        $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->findOrFail($import);
         abort_if($batch->rows === null, 404);
 
         $errors = [];
@@ -176,7 +175,7 @@ class InvoiceImportController extends Controller
 
         try {
             DB::transaction(function () use ($company, $user, $import, $service): void {
-                $batch = $this->availableBatches($company->id, $user->id)->lockForUpdate()->findOrFail($import);
+                $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->lockForUpdate()->findOrFail($import);
                 if ($batch->rows === null) {
                     return;
                 }
@@ -203,19 +202,10 @@ class InvoiceImportController extends Controller
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
-        $batch = $this->availableBatches($company->id, $user->id)->lockForUpdate()->findOrFail($import);
+        $batch = InvoiceImport::query()->availableTo($company->id, $user->id)->lockForUpdate()->findOrFail($import);
         abort_if($batch->rows === null, 409, 'A már megerősített import nem vethető el.');
         $batch->deleteOrFail();
 
         return to_route('organizations.invoice-imports.index', $company);
-    }
-
-    /** @return Builder<InvoiceImport> */
-    private function availableBatches(int $organizationId, int $userId): Builder
-    {
-        return InvoiceImport::query()
-            ->where('organization_id', $organizationId)
-            ->where('user_id', $userId)
-            ->where('expires_at', '>', now());
     }
 }
