@@ -109,6 +109,7 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                     Route::post('/', [InvoiceImportController::class, 'store'])->name('store');
                     Route::get('{import}', [InvoiceImportController::class, 'show'])->whereUuid('import')->name('show');
                     Route::delete('{import}', [InvoiceImportController::class, 'destroy'])->whereUuid('import')->name('destroy');
+                    Route::get('{import}/receipt', [InvoiceImportController::class, 'receipt'])->whereUuid('import')->name('receipt');
                     Route::get('{import}/error-report', [InvoiceImportController::class, 'errorReport'])->whereUuid('import')->name('error-report');
                     Route::post('{import}/confirm', [InvoiceImportController::class, 'confirm'])->whereUuid('import')->name('confirm');
                 });

@@ -8,6 +8,7 @@ import {
     create,
     destroy,
     errorReport,
+    receipt,
 } from '@/routes/organizations/invoice-imports';
 import { index } from '@/routes/organizations/invoices';
 
@@ -152,6 +153,18 @@ export default function InvoiceImportPreview({
                                 </Link>
                             </Button>
                         )}
+                        <Button asChild variant="outline">
+                            <a
+                                href={
+                                    receipt({
+                                        organization: organizationId,
+                                        import: importId,
+                                    }).url
+                                }
+                            >
+                                Importeredmény letöltése CSV-ben
+                            </a>
+                        </Button>
                         <Button asChild variant="outline">
                             <Link href={index(organizationId)}>
                                 Vissza a számlákhoz
