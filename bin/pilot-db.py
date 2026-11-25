@@ -10,7 +10,7 @@ PILOT_BACKUP_ID = 0x4D43504C
 
 
 def connect_read_only(path):
-    return sqlite3.connect(path.resolve(strict=True).as_uri() + '?mode=ro')
+    return sqlite3.connect(path.resolve(strict=True).as_uri() + '?mode=ro', uri=True)
 
 
 def snapshot(source, destination):
