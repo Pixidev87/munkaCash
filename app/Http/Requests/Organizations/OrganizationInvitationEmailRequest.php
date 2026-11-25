@@ -4,8 +4,15 @@ namespace App\Http\Requests\Organizations;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class InviteOrganizationMemberRequest extends FormRequest
+class OrganizationInvitationEmailRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->isMethod('DELETE')) {
+            $this->errorBag = 'cancelInvitation';
+        }
+    }
+
     public function authorize(): bool
     {
         $company = $this->user()->findActiveOrganization((string) $this->route('organization'));

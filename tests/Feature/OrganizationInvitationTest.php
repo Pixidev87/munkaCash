@@ -113,6 +113,48 @@ class OrganizationInvitationTest extends TestCase
         $this->assertDatabaseHas('organization_user', ['organization_id' => $company->id, 'user_id' => $owner->id, 'role' => 'owner']);
     }
 
+    public function test_owner_can_cancel_a_pending_link_without_affecting_another_company(): void
+    {
+        [$company, $owner] = $this->companyWithOwner();
+        [$other, $otherOwner] = $this->companyWithOwner();
+        $recipient = User::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
+
+        $link = $this->issue($company, $owner, $recipient->email);
+        $otherLink = $this->issue($other, $otherOwner, $recipient->email);
+        $cancel = route('organizations.members.invitations.destroy', $company);
+        $list = route('organizations.members.index', $company);
+
+        $this->actingAs($member)->delete($cancel, ['email' => $recipient->email])->assertForbidden();
+        $this->actingAs($otherOwner)->delete($cancel, ['email' => $recipient->email])->assertNotFound();
+        $this->actingAs($owner)->delete($cancel, ['email' => 'invalid'])->assertSessionHasErrorsIn('cancelInvitation', 'email');
+        $this->assertDatabaseCount('organization_invitations', 2);
+        $this->delete($cancel, ['email' => strtoupper($recipient->email)])
+            ->assertRedirect($list)->assertInertiaFlash('invitationCancellation', 'cancelled');
+        $this->delete($cancel, ['email' => $recipient->email])
+            ->assertRedirect($list)->assertInertiaFlash('invitationCancellation', 'not_found');
+
+        $this->actingAs($recipient)->get($link)->assertNotFound();
+        $this->post($link)->assertNotFound();
+        $this->post($otherLink)->assertRedirect(route('organizations.show', $other));
+        $this->assertSame([$other->id], $recipient->activeOrganizations()->pluck('organizations.id')->all());
+    }
+
+    public function test_cancelling_a_link_does_not_revoke_existing_membership(): void
+    {
+        [$company, $owner] = $this->companyWithOwner();
+        $recipient = User::factory()->create();
+        $link = $this->issue($company, $owner, $recipient->email);
+        $this->actingAs($recipient)->post($link)->assertRedirect(route('organizations.show', $company));
+
+        $this->actingAs($owner)->delete(route('organizations.members.invitations.destroy', $company), [
+            'email' => $recipient->email,
+        ])->assertRedirect()->assertInertiaFlash('invitationCancellation', 'not_found');
+
+        $this->actingAs($recipient)->get(route('organizations.show', $company))->assertOk();
+    }
+
     /** @return array{Organization, User} */
     private function companyWithOwner(): array
     {

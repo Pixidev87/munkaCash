@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Organizations\InviteOrganizationMemberRequest;
+use App\Http\Requests\Organizations\OrganizationInvitationEmailRequest;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class OrganizationInvitationController extends Controller
 {
-    public function store(InviteOrganizationMemberRequest $request, string $organization): RedirectResponse
+    public function store(OrganizationInvitationEmailRequest $request, string $organization): RedirectResponse
     {
         $company = $request->user()->findActiveOrganization($organization);
         $token = bin2hex(random_bytes(32));
@@ -30,6 +30,20 @@ class OrganizationInvitationController extends Controller
         ]);
 
         Inertia::flash('invitationPath', route('organization-invitations.show', $token, absolute: false));
+
+        return to_route('organizations.members.index', $company);
+    }
+
+    public function destroy(OrganizationInvitationEmailRequest $request, string $organization): RedirectResponse
+    {
+        $company = $request->user()->findActiveOrganization($organization);
+        $cancelled = OrganizationInvitation::query()
+            ->where('organization_id', $company->id)
+            ->where('email_digest', OrganizationInvitation::digestEmail($request->email()))
+            ->where('expires_at', '>', now())
+            ->delete();
+
+        Inertia::flash('invitationCancellation', $cancelled > 0 ? 'cancelled' : 'not_found');
 
         return to_route('organizations.members.index', $company);
     }

@@ -47,6 +47,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::post('members/invitations', [OrganizationInvitationController::class, 'store'])
                     ->middleware('throttle:15,1,organization-invitations')
                     ->name('members.invitations.store');
+                Route::delete('members/invitations', [OrganizationInvitationController::class, 'destroy'])
+                    ->middleware('throttle:15,1,organization-invitations')
+                    ->name('members.invitations.destroy');
                 Route::delete('members/{member}', [OrganizationMemberController::class, 'destroy'])
                     ->whereNumber('member')
                     ->name('members.destroy');

@@ -32,6 +32,6 @@ A pilot jelenleg a `config/reminder-calendar.php` fájlban rögzített 2026-os m
 
 ## Munkatárs meghívása
 
-A **Munkatársak kezelése** oldalon a tulajdonos megadja a meghívott e-mail-címét és létrehozza a linket. A linket a tulajdonos osztja meg a munkatárssal. A munkatárs a meghívott címhez tartozó, ellenőrzött fiókkal bejelentkezik, megnyitja a linket és elfogadja a meghívást. A link 24 óráig és egy elfogadásra érvényes. Ugyanarra a címre kiadott új link érvényteleníti az előzőt.
+A **Munkatársak kezelése** oldalon a tulajdonos megadja a meghívott e-mail-címét és létrehozza a linket. A linket a tulajdonos osztja meg a munkatárssal. A munkatárs a meghívott címhez tartozó, ellenőrzött fiókkal bejelentkezik, megnyitja a linket és elfogadja a meghívást. A link 24 óráig és egy elfogadásra érvényes. Ugyanarra a címre kiadott új link érvényteleníti az előzőt. A tulajdonos a **Függő meghívó visszavonása** résznél a meghívó e-mail-címével letilthatja az érvényes linket. Már elfogadott meghívásnál a munkatárs hozzáférése a tagságánál vonható vissza.
 
 A helyreállítás és az éles telepítés során a meghívó útvonalát is érzékeny adatként kezeld. A webszerver és a proxy hozzáférési naplójában a meghívó tokenjét maszkolni kell. Régi mentésből helyreállított adatbázisban újranyitás előtt érvénytelenítsd a függő meghívókat, hogy a mentésben szereplő korábbi linkek ne váljanak ismét használhatóvá.

@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
 import { destroy } from '@/routes/organizations/members';
-import { store } from '@/routes/organizations/members/invitations';
+import {
+    destroy as cancelInvitation,
+    store,
+} from '@/routes/organizations/members/invitations';
 
 type Member = { id: string; name: string; email: string };
 
@@ -21,6 +24,7 @@ type Props = {
 
 export default function Members({ organization, members }: Props) {
     const [invitationLink, setInvitationLink] = useState('');
+    const [cancellationStatus, setCancellationStatus] = useState('');
     return (
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Munkatársak · ${organization.name}`} />
@@ -38,7 +42,10 @@ export default function Members({ organization, members }: Props) {
                 <Form
                     {...store.form(organization.id)}
                     resetOnSuccess
-                    onStart={() => setInvitationLink('')}
+                    onStart={() => {
+                        setInvitationLink('');
+                        setCancellationStatus('');
+                    }}
                     onSuccess={(page) => {
                         const path = page.flash.invitationPath;
                         if (typeof path === 'string') {
@@ -86,6 +93,58 @@ export default function Members({ organization, members }: Props) {
                     </div>
                 )}
             </section>
+            <details className="space-y-3 rounded-xl border p-4">
+                <summary className="cursor-pointer font-semibold">
+                    Függő meghívó visszavonása
+                </summary>
+                <Form
+                    {...cancelInvitation.form(organization.id)}
+                    errorBag="cancelInvitation"
+                    resetOnSuccess
+                    onStart={() => setCancellationStatus('')}
+                    onSuccess={(page) => {
+                        if (page.flash.invitationCancellation === 'cancelled') {
+                            setInvitationLink('');
+                            setCancellationStatus(
+                                'A meghívólinket visszavontad.',
+                            );
+                        } else if (
+                            page.flash.invitationCancellation === 'not_found'
+                        ) {
+                            setCancellationStatus(
+                                'Ehhez a címhez nincs érvényes meghívó.',
+                            );
+                        }
+                    }}
+                    className="space-y-2"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <Label htmlFor="cancel-invite-email">
+                                A meghívó e-mail-címe
+                            </Label>
+                            <Input
+                                id="cancel-invite-email"
+                                name="email"
+                                type="email"
+                                maxLength={255}
+                                required
+                            />
+                            <InputError message={errors.email} role="alert" />
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                Meghívólink visszavonása
+                            </Button>
+                        </>
+                    )}
+                </Form>
+                <p className="text-sm text-muted-foreground" role="status">
+                    {cancellationStatus}
+                </p>
+            </details>
             {members.data.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     Nincs aktív munkatárs ezen az oldalon.
