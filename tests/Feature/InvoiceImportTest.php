@@ -302,6 +302,24 @@ class InvoiceImportTest extends TestCase
             ->where('expiresAt', now()->addDays(30)->toISOString()));
     }
 
+    public function test_imported_invoices_appear_in_the_csv_balance_review_list_until_checked(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user);
+        $batch = $this->upload($company, "{$customer};CSV-42;2026-12-01;HUF;120000");
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+        $invoice = $company->invoices()->sole();
+        $list = route('organizations.invoices.index', [$company, 'source' => 'csv', 'awaiting_balance' => 1]);
+
+        $this->get($list)->assertInertia(fn (Assert $page) => $page
+            ->where('filters.source', 'csv')->where('filters.awaitingBalance', true)
+            ->has('invoices.data', 1)->where('invoices.data.0.number', 'CSV-42'));
+        $this->patch(route('organizations.invoices.balance.update', [$company, $invoice]), [
+            'revision' => $invoice->revision, 'outstanding_amount' => 120_000,
+        ])->assertSessionHasNoErrors();
+        $this->get($list)->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
+    }
+
     public function test_expired_previews_cannot_be_opened_or_confirmed_and_are_pruned(): void
     {
         [$company, $user, $customer] = $this->createCompany();
