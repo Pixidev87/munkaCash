@@ -104,6 +104,35 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertNull($customer->fresh()->billing_email_confirmed_at);
     }
 
+    public function test_revoking_billing_confirmation_keeps_the_address_and_blocks_queued_tests(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        $customer = $invoice->customer;
+        $url = route('organizations.customers.billing-contact.revoke', [$company, $customer]);
+
+        $this->actingAs($owner)->delete($url, ['revision' => -1])
+            ->assertSessionHasErrorsIn('revocation', ['revision']);
+        $this->delete($url, ['revision' => 1])
+            ->assertSessionHasErrorsIn('revocation', ['revision']);
+
+        $this->delete($url, ['revision' => 0])->assertSessionHasNoErrors();
+        $this->delete($url, ['revision' => 1])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('customers', [
+            'id' => $customer->id,
+            'billing_email' => 'billing@example.test',
+            'billing_email_confirmed_at' => null,
+            'billing_email_confirmed_by' => null,
+            'billing_email_revision' => 1,
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id,
+            'status' => 'blocked',
+            'reason' => 'billing_confirmation_revoked',
+        ]);
+    }
+
     public function test_uncertain_transport_and_abandoned_claims_are_not_retried(): void
     {
         [, , , $approval] = $this->approvedDraft();

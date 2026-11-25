@@ -13,6 +13,8 @@ export const deliveryReasons: Record<string, string> = {
     invoice_disputed: 'A számla vitatott.',
     customer_do_not_contact: 'Az ügyfél emlékeztetői tiltva vannak.',
     billing_contact_changed: 'Az ügyfél pénzügyi e-mail-címe megváltozott.',
+    billing_confirmation_revoked:
+        'A pénzügyi e-mail-cím megerősítését visszavonták.',
     cooldown:
         'A legutóbbi küldési kísérlettől számítva hét napnak kell eltelnie.',
     outside_window: 'A jóváhagyás érvényessége alatt nincs küldési ablak.',
