@@ -1,4 +1,7 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
+import InputError from '@/components/input-error';
+import { Label } from '@/components/ui/label';
+import { accessLog } from '@/routes/organizations';
 import { Button } from '@/components/ui/button';
 import { index } from '@/routes/organizations/members';
 
@@ -29,6 +32,7 @@ type AccessEvent = {
 
 type Props = {
     organization: { id: string; name: string };
+    filters: { action: keyof typeof actions | null };
     events: {
         data: AccessEvent[];
         prev_page_url: string | null;
@@ -36,7 +40,7 @@ type Props = {
     };
 };
 
-export default function AccessLog({ organization, events }: Props) {
+export default function AccessLog({ organization, filters, events }: Props) {
     return (
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Hozzáférési napló · ${organization.name}`} />
@@ -51,6 +55,51 @@ export default function AccessLog({ organization, events }: Props) {
             <p className="text-sm wrap-break-word text-muted-foreground">
                 {organization.name}
             </p>
+            <Form
+                {...accessLog.form(organization.id)}
+                key={JSON.stringify(filters)}
+                className="space-y-3 rounded-xl border p-4"
+            >
+                {({ processing, errors }) => (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="access-action">
+                                Művelet típusa
+                            </Label>
+                            <select
+                                id="access-action"
+                                name="action"
+                                defaultValue={filters.action ?? ''}
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Minden művelet</option>
+                                {Object.entries(actions).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                            <InputError
+                                message={errors.action ?? errors.page}
+                            />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="submit" disabled={processing}>
+                                Szűrés
+                            </Button>
+                            {filters.action && (
+                                <Button asChild variant="outline">
+                                    <Link href={accessLog(organization.id)}>
+                                        Szűrők törlése
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+                    </>
+                )}
+            </Form>
             {events.data.length > 0 ? (
                 <ul className="divide-y rounded-xl border">
                     {events.data.map((event) => (
