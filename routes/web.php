@@ -4,6 +4,7 @@ use App\Http\Controllers\BillingContactController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
+use App\Http\Controllers\OrganizationAccessLogController;
 use App\Http\Controllers\OrganizationCloseoutController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationExportController;
@@ -43,6 +44,7 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 ->name('exports.invoices');
             Route::post('closeout', [OrganizationCloseoutController::class, 'store'])->name('closeout');
             Route::middleware(EnsureOrganizationOperationsAvailable::class)->group(function () {
+                Route::get('access-log', [OrganizationAccessLogController::class, 'index'])->name('access-log');
                 Route::get('members', [OrganizationMemberController::class, 'index'])->name('members.index');
                 Route::post('members/invitations', [OrganizationInvitationController::class, 'store'])
                     ->middleware('throttle:15,1,organization-invitations')

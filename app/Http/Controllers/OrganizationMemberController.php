@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrganizationAccessAction;
 use App\Http\Requests\Organizations\RevokeMemberAccessRequest;
+use App\Models\OrganizationAccessEvent;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -53,6 +55,7 @@ class OrganizationMemberController extends Controller
                 ->where('organization_id', $company->id)
                 ->where('email_digest', OrganizationInvitation::digestEmail($selected->email))
                 ->delete();
+            OrganizationAccessEvent::record($company, $request->user(), OrganizationAccessAction::MemberRevoked, $selected);
         }
 
         return to_route('organizations.members.index', $organization);

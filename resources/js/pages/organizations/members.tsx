@@ -4,7 +4,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { show } from '@/routes/organizations';
+import { accessLog, show } from '@/routes/organizations';
 import { destroy } from '@/routes/organizations/members';
 import {
     destroy as cancelInvitation,
@@ -37,6 +37,12 @@ export default function Members({ organization, members }: Props) {
             <p className="text-sm wrap-break-word text-muted-foreground">
                 {organization.name}
             </p>
+            <Link
+                className="inline-block text-sm underline"
+                href={accessLog(organization.id)}
+            >
+                Hozzáférési napló
+            </Link>
             <section className="space-y-3 rounded-xl border p-4">
                 <h2 className="font-semibold">Munkatárs meghívása</h2>
                 <Form
