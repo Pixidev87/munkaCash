@@ -22,9 +22,11 @@ export default function InvoiceImportHistory({
     organizationId,
     imports,
     status,
+    counts,
 }: {
     organizationId: string;
     status: 'pending' | 'completed' | null;
+    counts: { pending: number; completed: number };
     imports: {
         data: Import[];
         prev_page_url: string | null;
@@ -59,9 +61,12 @@ export default function InvoiceImportHistory({
                                 defaultValue={status ?? ''}
                                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                             >
-                                <option value="">Minden állapot</option>
+                                <option value="">
+                                    Minden állapot (
+                                    {counts.pending + counts.completed})
+                                </option>
                                 <option value="pending">
-                                    Megerősítésre vár
+                                    Megerősítésre vár ({counts.pending})
                                 </option>
                                 <option value="completed">Lezárt import</option>
                             </select>
