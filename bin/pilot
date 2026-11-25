@@ -24,6 +24,11 @@ if [[ ! -d "$state" ]]; then
 fi
 
 state=$(cd "$state" && pwd -P)
+public_root=$(cd public && pwd -P)
+if [[ "$state/" == "$public_root/"* ]]; then
+    echo 'The pilot state directory must be outside the web root.' >&2
+    exit 2
+fi
 database="$state/closed-pilot.sqlite"
 key="$state/pilot.env"
 

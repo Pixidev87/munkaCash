@@ -29,8 +29,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })->create();
 
-$pilotState = $_SERVER['MUNKACASH_PILOT_STATE'] ?? null;
-if (is_string($pilotState) && ($_SERVER['APP_ENV'] ?? null) === 'closed-pilot') {
+$pilotState = getenv('MUNKACASH_PILOT_STATE', local_only: true);
+if (is_string($pilotState) && getenv('APP_ENV', local_only: true) === 'closed-pilot') {
     $app->useEnvironmentPath($pilotState);
     $app->useStoragePath($pilotState.'/storage');
     $app->loadEnvironmentFrom('pilot.env');
