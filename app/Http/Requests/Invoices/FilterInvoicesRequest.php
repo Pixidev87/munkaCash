@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Enums\InvoiceSource;
 use App\Enums\InvoiceStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,7 @@ class FilterInvoicesRequest extends FormRequest
     {
         return [
             'invoice_number' => ['nullable', 'string', 'max:100'],
+            'source' => ['nullable', Rule::enum(InvoiceSource::class)],
             'status' => ['nullable', Rule::enum(InvoiceStatus::class)],
             'disputed' => ['nullable', 'in:1'],
             'overdue' => ['nullable', 'in:1'],
@@ -28,6 +30,7 @@ class FilterInvoicesRequest extends FormRequest
     {
         return [
             'invoice_number.*' => 'A számlaszám legfeljebb 100 karakter lehet.',
+            'source.*' => 'Válassz érvényes számlaforrást.',
             'status.*' => 'Válassz érvényes fizetési állapotot.',
             'overdue.*' => 'A lejárt számlák szűrője érvénytelen.',
             'disputed.*' => 'A vitatott számlák szűrője érvénytelen.',
