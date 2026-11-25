@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+state=${PILOT_STATE_DIR:-"$HOME/.munkacash-closed-pilot"}
+web_port=${PILOT_WEB_PORT:-8088}
+smtp_port=${PILOT_SMTP_PORT:-1026}
+mail_port=${PILOT_MAIL_PORT:-8026}
+
+for port in "$web_port" "$smtp_port" "$mail_port"; do
+    if [[ ! $port =~ ^[1-9][0-9]{0,4}$ ]] || (( port > 65535 )); then
+        echo "Invalid pilot port: $port" >&2
+        exit 2
+    fi
+done
+
+if [[ ${1:-} == init ]]; then
+    mkdir -p "$state"
+fi
+if [[ ! -d "$state" ]]; then
+    echo 'Run bash bin/pilot init before starting the pilot.' >&2
+    exit 2
+fi
+
+state=$(cd "$state" && pwd -P)
+database="$state/closed-pilot.sqlite"
+key="$state/pilot.env"
+
+clean_env=(env -i PATH="$PATH" PHPRC="${PHPRC:-}" PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR-:}"
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}")
+
+pilot_php() {
+    exec "${clean_env[@]}" APP_ENV=closed-pilot APP_DEBUG=false APP_NAME='MunkaCash Pilot' \
+        APP_URL="http://127.0.0.1:$web_port" MUNKACASH_PILOT_STATE="$state" \
+        APP_CONFIG_CACHE="$state/cache/config.php" APP_ROUTES_CACHE="$state/cache/routes.php" \
+        APP_PACKAGES_CACHE="$state/cache/packages.php" APP_SERVICES_CACHE="$state/cache/services.php" \
+        APP_EVENTS_CACHE="$state/cache/events.php" LARAVEL_STORAGE_PATH="$state/storage" \
+        DB_CONNECTION=sqlite DB_DATABASE="$database" \
+        SESSION_DRIVER=database SESSION_SECURE_COOKIE=false CACHE_STORE=database \
+        QUEUE_CONNECTION=database MAIL_MAILER=array PILOT_SMTP_PORT="$smtp_port" \
+        LOG_CHANNEL=stderr php "$@"
+}
+
+case ${1:-} in
+    init)
+        mkdir -p "$state/cache" "$state/storage/app/private" "$state/storage/framework/"{cache,sessions,views} "$state/storage/logs"
+        if [[ ! -f "$key" ]]; then
+            if [[ -e "$database" ]]; then
+                echo 'The pilot database exists but its application key is missing.' >&2
+                exit 2
+            fi
+            "${clean_env[@]}" php -r 'echo "APP_KEY=base64:".base64_encode(random_bytes(32)), PHP_EOL;' >"$key"
+        fi
+        touch "$database"
+        pilot_php artisan migrate --force
+        ;;
+    demo|web|mail|scheduler|worker)
+        if [[ ! -s "$key" || ! -f "$database" ]]; then
+            echo 'Run bash bin/pilot init before starting the pilot.' >&2
+            exit 2
+        fi
+        case $1 in
+            demo) pilot_php artisan munkacash:demo ;;
+            web)
+                if [[ ! -f public/build/manifest.json || -e public/hot ]]; then
+                    echo 'Build the frontend with npm run build and stop the Vite dev server.' >&2
+                    exit 2
+                fi
+                pilot_php -S "127.0.0.1:$web_port" -t public
+                ;;
+            mail)
+                exec "${clean_env[@]}" mailpit --listen "127.0.0.1:$mail_port" --smtp "127.0.0.1:$smtp_port" \
+                    --database "$state/mailpit.sqlite" --smtp-allowed-recipients '(?i)\.test$'
+                ;;
+            scheduler) pilot_php artisan schedule:work ;;
+            worker) pilot_php artisan queue:work database --queue=reminder-tests --sleep=1 --timeout=40 --tries=1 ;;
+        esac
+        ;;
+    *)
+        echo 'Usage: bash bin/pilot {init|demo|web|mail|scheduler|worker}' >&2
+        exit 2
+        ;;
+esac
