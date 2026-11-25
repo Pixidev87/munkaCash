@@ -9,9 +9,11 @@ use App\Http\Requests\Invoices\FilterInvoiceImportsRequest;
 use App\Http\Requests\Invoices\UploadInvoiceCsvRequest;
 use App\Models\Customer;
 use App\Models\InvoiceImport;
+use App\Services\HungarianWorkCalendar;
 use App\Services\InvoiceCsvImport;
 use App\Services\InvoiceCsvParser;
 use App\Services\SpreadsheetCsv;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +31,15 @@ class InvoiceImportController extends Controller
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
         $status = $request->validated('status');
-        $available = InvoiceImport::query()->availableTo($company->id, $user->id);
+        $from = $request->validated('uploaded_from');
+        $to = $request->validated('uploaded_to');
+        $available = InvoiceImport::query()->availableTo($company->id, $user->id)
+            ->when($from !== null, fn ($query) => $query->where(
+                'created_at', '>=', CarbonImmutable::parse($from, HungarianWorkCalendar::TIMEZONE)->startOfDay()->utc(),
+            ))
+            ->when($to !== null, fn ($query) => $query->where(
+                'created_at', '<=', CarbonImmutable::parse($to, HungarianWorkCalendar::TIMEZONE)->endOfDay()->utc(),
+            ));
         $completed = (clone $available)->whereNull('rows')->selectRaw('COUNT(*)');
         $counts = (clone $available)->toBase()
             ->selectRaw('COUNT(*) AS total')
@@ -43,7 +53,7 @@ class InvoiceImportController extends Controller
             ->latest('created_at')
             ->latest('id')
             ->simplePaginate(20)
-            ->appends(['status' => $status])
+            ->appends(['status' => $status, 'uploaded_from' => $from, 'uploaded_to' => $to])
             ->through(static fn (InvoiceImport $import): array => [
                 'id' => $import->id,
                 'createdAt' => $import->created_at?->toISOString(),
@@ -55,6 +65,7 @@ class InvoiceImportController extends Controller
         return Inertia::render('organizations/invoice-import-history', [
             'organizationId' => (string) $company->id,
             'status' => $status,
+            'uploadDates' => ['from' => $from, 'to' => $to],
             'counts' => [
                 'completed' => $completedCount,
                 'pending' => (int) ($counts->total ?? 0) - $completedCount,
