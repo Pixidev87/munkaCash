@@ -13,6 +13,15 @@ class FilterInvoicesRequest extends FormRequest
 {
     protected $errorBag = 'invoiceFilters';
 
+    /** @return array<string, mixed> */
+    public function criteria(): array
+    {
+        return $this->safe()->only([
+            'invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id',
+            'awaiting_balance', 'billing_unconfirmed', 'sort', 'due_from', 'due_to',
+        ]);
+    }
+
     /** @return array<string, list<string|EnumRule|Exists>> */
     public function rules(): array
     {
