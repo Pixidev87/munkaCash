@@ -212,6 +212,33 @@ class ReminderTestDeliveryTest extends TestCase
         $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'blocked']);
     }
 
+    public function test_rechecking_the_same_balance_blocks_the_old_delivery_for_that_invoice(): void
+    {
+        [$company, $owner, $invoice, $approval] = $this->approvedDraft();
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        $otherInvoice = $invoice->replicate()->fill(['invoice_number' => '00043']);
+        $otherInvoice->save();
+        $otherApproval = $approval->replicate();
+        $otherInvoice->reminderApprovals()->save($otherApproval);
+        $otherDelivery = $otherApproval->testDelivery()->create(['status' => 'pending']);
+        $url = route('organizations.invoices.balance.update', [$company, $invoice]);
+
+        $this->actingAs($owner)->patch($url, ['outstanding_amount' => 80_000, 'revision' => 1])
+            ->assertSessionHasErrorsIn('balance-'.$invoice->id, 'outstanding_amount');
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $delivery->id, 'status' => 'pending']);
+
+        $this->patch($url, ['outstanding_amount' => 80_000, 'revision' => 0])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id,
+            'status' => 'blocked',
+            'reason' => 'balance_rechecked',
+        ]);
+        $this->assertDatabaseHas('reminder_test_deliveries', ['id' => $otherDelivery->id, 'status' => 'pending']);
+        $this->get(route('organizations.invoices.reminder-preview', [$company, $invoice]))
+            ->assertInertia(fn (Assert $page) => $page->where('approval.status', 'invalidated'));
+    }
+
     public function test_company_pause_blocks_its_queued_delivery_and_resuming_does_not_requeue_it(): void
     {
         [$company, $owner, $invoice, $approval] = $this->approvedDraft();

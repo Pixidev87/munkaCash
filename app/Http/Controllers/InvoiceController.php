@@ -104,8 +104,12 @@ class InvoiceController extends Controller
         return to_route('organizations.invoices.index', $organization);
     }
 
-    public function updateBalance(Request $request, string $organization, string $invoice): RedirectResponse
-    {
+    public function updateBalance(
+        Request $request,
+        string $organization,
+        string $invoice,
+        ReminderTestQueue $queue,
+    ): RedirectResponse {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
         $selected = $company->invoices()->findOrFail($invoice);
@@ -141,6 +145,7 @@ class InvoiceController extends Controller
             'outstanding_amount' => $outstanding,
             'occurred_at' => $checkedAt,
         ]);
+        $queue->blockPendingForInvoice($selected, ReminderDeliveryControls::BALANCE_RECHECKED);
 
         return back();
     }
