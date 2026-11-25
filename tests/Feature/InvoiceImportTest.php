@@ -188,6 +188,34 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoices', 0);
     }
 
+    public function test_import_history_only_shows_the_users_unexpired_batches_in_the_company(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        [$other, $coworker, $otherCustomer] = $this->createCompany();
+        $coworker->organizations()->attach($company, ['status' => 'active']);
+        $user->organizations()->attach($other, ['status' => 'active']);
+        $this->actingAs($user);
+        $completed = $this->upload($company, "{$customer};00042;2026-12-01;HUF;120000");
+        $this->confirm($company, $completed)->assertSessionHasNoErrors();
+        $expired = $this->upload($company, "{$customer};00044;2026-12-01;HUF;120000");
+        $expired->update(['expires_at' => now()]);
+        $this->upload($other, "{$otherCustomer};00042;2026-12-01;HUF;120000");
+        $this->actingAs($coworker);
+        $this->upload($company, "{$customer};00045;2026-12-01;HUF;120000");
+        $this->actingAs($user)->travel(1)->second();
+        $pending = $this->upload($company, "{$customer};00043;2026-12-01;HUF;120000");
+
+        $this->get(route('organizations.invoice-imports.index', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('organizations/invoice-import-history')
+                ->has('imports.data', 2)
+                ->where('imports.data.0.id', $pending->id)
+                ->where('imports.data.0.created', null)
+                ->missing('imports.data.0.rows')
+                ->where('imports.data.1.id', $completed->id)
+                ->where('imports.data.1.created', 1));
+    }
+
     public function test_expired_previews_cannot_be_opened_or_confirmed_and_are_pruned(): void
     {
         [$company, $user, $customer] = $this->createCompany();

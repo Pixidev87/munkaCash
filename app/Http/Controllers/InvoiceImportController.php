@@ -20,6 +20,29 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceImportController extends Controller
 {
+    public function index(Request $request, string $organization): Response
+    {
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $imports = $this->availableBatches($company->id, $user->id)
+            ->select(['id', 'created_at', 'expires_at', 'created_count', 'unchanged_count'])
+            ->latest('created_at')
+            ->latest('id')
+            ->simplePaginate(20)
+            ->through(static fn (InvoiceImport $import): array => [
+                'id' => $import->id,
+                'createdAt' => $import->created_at?->toISOString(),
+                'expiresAt' => $import->expires_at->toISOString(),
+                'created' => $import->created_count,
+                'unchanged' => $import->unchanged_count,
+            ]);
+
+        return Inertia::render('organizations/invoice-import-history', [
+            'organizationId' => (string) $company->id,
+            'imports' => $imports,
+        ]);
+    }
+
     public function create(Request $request, string $organization): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
