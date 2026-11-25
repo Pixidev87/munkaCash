@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BillingContactController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\InvoiceBalanceHistoryController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationAccessLogController;
@@ -87,6 +88,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                     Route::get('{import}', [InvoiceImportController::class, 'show'])->whereUuid('import')->name('show');
                     Route::post('{import}/confirm', [InvoiceImportController::class, 'confirm'])->whereUuid('import')->name('confirm');
                 });
+                Route::get('invoices/{invoice}/balance-history', [InvoiceBalanceHistoryController::class, 'index'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.balance-history');
                 Route::patch('invoices/{invoice}/balance', [InvoiceController::class, 'updateBalance'])
                     ->whereNumber('invoice')
                     ->name('invoices.balance.update');

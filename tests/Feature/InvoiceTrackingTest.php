@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Invoice;
+use App\Models\InvoiceBalanceEvent;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -301,6 +302,64 @@ class InvoiceTrackingTest extends TestCase
         $this->get($next)->assertInertia(fn (Assert $page) => $page
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', 'DEMO-1'));
+    }
+
+    public function test_balance_history_records_checks_and_resets_only_for_the_selected_invoice(): void
+    {
+        $this->freezeSecond();
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $otherCompany = Organization::factory()->create();
+        $otherInvoice = $this->createInvoice($otherCompany);
+        $balance = route('organizations.invoices.balance.update', [$company, $invoice]);
+        $reset = route('organizations.invoices.balance.destroy', [$company, $invoice]);
+        $history = route('organizations.invoices.balance-history', [$company, $invoice]);
+
+        $this->actingAs($member)->get($history)
+            ->assertInertia(fn (Assert $page) => $page->has('events.data', 0));
+        $this->patch($balance, ['outstanding_amount' => 80_000, 'revision' => 0])->assertSessionHasNoErrors();
+        $this->patch($balance, ['outstanding_amount' => 0, 'revision' => 1])->assertSessionHasNoErrors();
+        $this->delete($reset, ['confirm' => true, 'revision' => 1])->assertSessionHasErrorsIn('reset-balance-'.$invoice->id, 'revision');
+        $this->delete($reset, ['confirm' => true, 'revision' => 2])->assertSessionHasNoErrors();
+        $this->delete($reset, ['confirm' => true, 'revision' => 3])->assertSessionHasNoErrors();
+
+        $this->get($history)->assertInertia(fn (Assert $page) => $page
+            ->component('organizations/invoice-balance-history')
+            ->where('number', '00042')
+            ->has('events.data', 3)
+            ->where('events.data.0.outstanding', null)
+            ->where('events.data.0.actor', $member->name)
+            ->where('events.data.0.occurredAt', now()->toISOString())
+            ->where('events.data.1.outstanding', 0)
+            ->where('events.data.2.outstanding', 80_000));
+        $this->get(route('organizations.invoices.balance-history', [$company, $otherInvoice]))->assertNotFound();
+        $this->get(route('organizations.invoices.balance-history', [$otherCompany, $otherInvoice]))->assertNotFound();
+    }
+
+    public function test_balance_history_expires_and_is_removed_when_the_company_is_deleted(): void
+    {
+        $this->freezeSecond();
+        $company = Organization::factory()->create();
+        $owner = User::factory()->create();
+        $owner->organizations()->attach($company, ['role' => 'owner', 'status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $invoice->balanceEvents()->create(['actor_id' => $owner->id, 'outstanding_amount' => 80_000, 'occurred_at' => now()->subDays(90)]);
+        $invoice->balanceEvents()->create(['actor_id' => $owner->id, 'outstanding_amount' => 0, 'occurred_at' => now()]);
+
+        $history = route('organizations.invoices.balance-history', [$company, $invoice]);
+        $this->actingAs($owner)->get($history)
+            ->assertInertia(fn (Assert $page) => $page->has('events.data', 1)->where('events.data.0.outstanding', 0));
+        $this->artisan('model:prune', ['--model' => [InvoiceBalanceEvent::class]])->assertSuccessful();
+        $this->assertDatabaseCount('invoice_balance_events', 1);
+
+        $this->post(route('organizations.closeout', $company), ['confirm' => true])->assertRedirect();
+        $this->get($history)->assertOk();
+        $this->travel(30)->days();
+        $this->get($history)->assertGone();
+        $this->artisan('organizations:purge', ['organization' => $company->id, '--apply' => true])->assertSuccessful();
+        $this->assertDatabaseCount('invoice_balance_events', 0);
     }
 
     private function createInvoice(Organization $company): Invoice

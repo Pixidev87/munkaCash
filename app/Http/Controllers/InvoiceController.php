@@ -118,6 +118,7 @@ class InvoiceController extends Controller
         ]);
 
         $outstanding = (int) $data['outstanding_amount'];
+        $checkedAt = now();
         $updated = $company->invoices()
             ->whereKey($selected->id)
             ->where('revision', $data['revision'])
@@ -125,7 +126,7 @@ class InvoiceController extends Controller
                 'outstanding_amount' => $outstanding,
                 'status' => InvoiceStatus::fromCheckedBalance($selected->gross_amount, $outstanding)->value,
                 'status_source' => 'manual',
-                'status_checked_at' => now(),
+                'status_checked_at' => $checkedAt,
                 'checked_by' => $user->id,
             ]);
 
@@ -135,12 +136,19 @@ class InvoiceController extends Controller
             ])->errorBag($bag);
         }
 
+        $selected->balanceEvents()->create([
+            'actor_id' => $user->id,
+            'outstanding_amount' => $outstanding,
+            'occurred_at' => $checkedAt,
+        ]);
+
         return back();
     }
 
     public function resetBalance(ResetInvoiceBalanceRequest $request, string $organization, string $invoice, ReminderTestQueue $queue): RedirectResponse
     {
-        $company = $request->user()->findActiveOrganization($organization);
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
         $selected = $company->invoices()->lockForUpdate()->findOrFail($invoice);
 
         if ($selected->revision !== $request->revision()) {
@@ -156,6 +164,11 @@ class InvoiceController extends Controller
                 'status_source' => null,
                 'status_checked_at' => null,
                 'checked_by' => null,
+            ]);
+            $selected->balanceEvents()->create([
+                'actor_id' => $user->id,
+                'outstanding_amount' => null,
+                'occurred_at' => now(),
             ]);
             $queue->blockPendingForInvoice($selected, ReminderDeliveryControls::BALANCE_UNVERIFIED);
         }

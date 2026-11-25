@@ -3,7 +3,11 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { index, reminderPreview } from '@/routes/organizations/invoices';
+import {
+    balanceHistory,
+    index,
+    reminderPreview,
+} from '@/routes/organizations/invoices';
 import { destroy, update } from '@/routes/organizations/invoices/balance';
 import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
@@ -221,6 +225,16 @@ export default function InvoiceCard({
                     </Form>
                 </details>
             )}
+            <Button asChild variant="outline">
+                <Link
+                    href={balanceHistory({
+                        organization: organizationId,
+                        invoice: invoice.id,
+                    })}
+                >
+                    Egyenlegtörténet
+                </Link>
+            </Button>
             <Button asChild variant="outline">
                 <Link
                     href={reminderPreview({
