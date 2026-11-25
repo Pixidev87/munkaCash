@@ -38,6 +38,7 @@ type Props = {
         dueFrom: string;
         dueTo: string;
     };
+    filteredExportUrl: string | null;
     totals: { count: number; unchecked: number; outstanding: string };
     invoices: {
         data: Invoice[];
@@ -53,6 +54,7 @@ export default function InvoicesPage({
     filters,
     invoices,
     totals,
+    filteredExportUrl,
 }: Props) {
     const { organizationReadOnly } = usePage<{
         organizationReadOnly: boolean;
@@ -480,6 +482,13 @@ export default function InvoicesPage({
                         </dd>
                     </div>
                 </dl>
+                {filteredExportUrl && totals.count > 0 && (
+                    <Button asChild variant="outline">
+                        <a href={filteredExportUrl}>
+                            Találatok letöltése CSV-ben
+                        </a>
+                    </Button>
+                )}
                 {invoices.data.length ? (
                     <ul className="space-y-3">
                         {invoices.data.map((invoice) => (

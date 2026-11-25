@@ -121,6 +121,23 @@ class OrganizationCsvExportTest extends TestCase
         $this->get(route($route, $params))->assertGone();
     }
 
+    public function test_invoice_list_exposes_the_download_for_owners_with_the_applied_filters_only(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->attach($company, 'owner');
+        $member = $this->attach($company, 'member');
+        $filters = ['organization' => $company, 'overdue' => 1, 'due_from' => '2026-12-01'];
+        $list = route('organizations.invoices.index', [...$filters, 'sort' => 'due_desc', 'page' => 2]);
+
+        $this->actingAs($owner)->get($list)
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filteredExportUrl', fn (string $url): bool => str_starts_with($url, '/organizations/'.$company->id.'/exports/filtered-invoices?')
+                    && str_contains($url, 'overdue=1') && str_contains($url, 'due_from=2026-12-01')
+                    && ! str_contains($url, 'page=') && ! str_contains($url, 'sort=')));
+        $this->actingAs($member)->get($list)
+            ->assertInertia(fn (Assert $page) => $page->where('filteredExportUrl', null));
+    }
+
     private function attach(Organization $company, string $role, ?User $user = null): User
     {
         $user ??= User::factory()->create();
