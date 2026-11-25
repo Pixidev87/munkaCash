@@ -29,6 +29,8 @@ type Props = {
         awaitingBalance: boolean;
         billingUnconfirmed: boolean;
         sort: string;
+        dueFrom: string;
+        dueTo: string;
     };
     invoices: {
         data: Invoice[];
@@ -56,7 +58,9 @@ export default function InvoicesPage({
         filters.overdue ||
         filters.awaitingBalance ||
         filters.billingUnconfirmed ||
-        filters.sort,
+        filters.sort ||
+        filters.dueFrom ||
+        filters.dueTo,
     );
     return (
         <div className="w-full max-w-5xl space-y-8 p-4 sm:p-6">
@@ -349,6 +353,35 @@ export default function InvoicesPage({
                                     <InputError message={errors.sort} />
                                 </div>
                             </div>
+                            <fieldset className="grid gap-3 sm:grid-cols-2">
+                                <legend className="mb-2 text-sm font-medium">
+                                    Rögzített fizetési határidő
+                                </legend>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-due-from">
+                                        Ettől a naptól
+                                    </Label>
+                                    <Input
+                                        id="filter-due-from"
+                                        name="due_from"
+                                        type="date"
+                                        defaultValue={filters.dueFrom}
+                                    />
+                                    <InputError message={errors.due_from} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-due-to">
+                                        Eddig a napig
+                                    </Label>
+                                    <Input
+                                        id="filter-due-to"
+                                        name="due_to"
+                                        type="date"
+                                        defaultValue={filters.dueTo}
+                                    />
+                                    <InputError message={errors.due_to} />
+                                </div>
+                            </fieldset>
                             <label className="flex items-center gap-2 text-sm">
                                 <input
                                     type="checkbox"
