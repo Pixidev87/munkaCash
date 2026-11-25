@@ -73,6 +73,25 @@ class OrganizationAccessLogFilterTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('events.data', 0));
     }
 
+    public function test_only_the_owner_can_read_the_log_during_the_closeout_window(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->ownerOf($company);
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
+        $log = route('organizations.access-log', $company);
+
+        $this->actingAs($owner)->post(route('organizations.closeout', $company), ['confirm' => true])
+            ->assertRedirect();
+        $this->get(route('organizations.exports.invoices', $company))->assertDownload();
+        $this->get($log)->assertInertia(fn (Assert $page) => $page
+            ->where('organizationReadOnly', true)
+            ->where('events.data.0.action', 'invoices_export'));
+        $this->actingAs($member)->get($log)->assertForbidden();
+        $this->travel(30)->days();
+        $this->actingAs($owner)->get($log)->assertGone();
+    }
+
     private function ownerOf(Organization $company): User
     {
         $owner = User::factory()->create();

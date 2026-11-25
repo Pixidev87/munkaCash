@@ -17,6 +17,11 @@ class OrganizationPolicy
         return ! $organization->isClosing() && $this->isActiveOwner($user, $organization);
     }
 
+    public function viewAccessLog(User $user, Organization $organization): bool
+    {
+        return $this->isActiveOwner($user, $organization);
+    }
+
     public function exportData(User $user, Organization $organization): bool
     {
         return $this->isActiveOwner($user, $organization);

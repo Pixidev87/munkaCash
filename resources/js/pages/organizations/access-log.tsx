@@ -2,9 +2,8 @@ import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { accessLog } from '@/routes/organizations';
+import { accessLog, show } from '@/routes/organizations';
 import { Button } from '@/components/ui/button';
-import { index } from '@/routes/organizations/members';
 
 const actions = {
     invitation_issued: 'Meghívó kiadása',
@@ -57,8 +56,8 @@ export default function AccessLog({
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Hozzáférési napló · ${organization.name}`} />
             <Button variant="outline" asChild>
-                <Link href={index(organization.id)}>
-                    Vissza a munkatársakhoz
+                <Link href={show(organization.id)}>
+                    Vissza a cég áttekintéséhez
                 </Link>
             </Button>
             <h1 className="text-2xl font-semibold tracking-tight">
