@@ -7,7 +7,9 @@ use App\Models\Organization;
 
 class OrganizationBalanceSummary
 {
-    /** @return array{outstanding: string, disputed: string, unchecked: int} */
+    public function __construct(private readonly OverdueInvoices $overdueInvoices) {}
+
+    /** @return array{outstanding: string, overdue: string, disputed: string, unchecked: int} */
     public function forOrganization(Organization $company): array
     {
         $openStatuses = [InvoiceStatus::Open->value, InvoiceStatus::PartiallyPaid->value];
@@ -26,7 +28,12 @@ class OrganizationBalanceSummary
             )
             ->first();
 
+        $overdue = $this->overdueInvoices->queryFor($company)
+            ->selectRaw('COALESCE(SUM(outstanding_amount), 0) AS total')
+            ->first();
+
         return [
+            'overdue' => (string) ($overdue->total ?? 0),
             'outstanding' => (string) ($balances->outstanding ?? 0),
             'disputed' => (string) ($balances->disputed ?? 0),
             'unchecked' => (int) ($balances->unchecked ?? 0),

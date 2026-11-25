@@ -7,6 +7,7 @@ use App\Http\Requests\Invoices\FilterInvoicesRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Services\OverdueInvoices;
 use App\Services\ReminderTestQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -18,14 +19,15 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
-    public function index(FilterInvoicesRequest $request, string $organization): Response
+    public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue']);
         $invoices = $company->invoices()
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
             ->when(isset($filters['status']), fn ($query) => $query->where('status', $filters['status']))
             ->when(isset($filters['disputed']), fn ($query) => $query->where('is_disputed', true))
+            ->when(isset($filters['overdue']), fn ($query) => $query->whereIn('id', $overdueInvoices->queryFor($company)->select('id')))
             ->with(['customer:id,display_name', 'checker:id,name'])
             ->latest('id')
             ->simplePaginate(25)
@@ -62,6 +64,7 @@ class InvoiceController extends Controller
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',
                 'disputed' => isset($filters['disputed']),
+                'overdue' => isset($filters['overdue']),
             ],
         ]);
     }

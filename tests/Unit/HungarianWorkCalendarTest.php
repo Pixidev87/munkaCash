@@ -47,4 +47,21 @@ class HungarianWorkCalendarTest extends TestCase
 
         $this->assertSame('2027-01-04', $calendar->effectiveDeadline($date)?->toDateString());
     }
+
+    public function test_overdue_ranges_include_a_year_end_rest_day_only_after_its_verified_deadline(): void
+    {
+        config([
+            'reminder-calendar.2026.days_off' => ['12-31'],
+            'reminder-calendar.2027' => null,
+        ]);
+        $calendar = app(HungarianWorkCalendar::class);
+        $today = CarbonImmutable::parse('2027-01-05', HungarianWorkCalendar::TIMEZONE);
+
+        $this->assertSame([['2026-01-01', '2026-12-31']], $calendar->overdueRanges($today));
+
+        config(['reminder-calendar.2027' => ['days_off' => ['01-01'], 'workdays' => []]]);
+
+        $this->assertSame([['2026-01-01', '2026-12-31']], $calendar->overdueRanges($today->subDay()));
+        $this->assertSame([['2026-01-01', '2027-01-01'], ['2027-01-01', '2027-01-05']], $calendar->overdueRanges($today));
+    }
 }
