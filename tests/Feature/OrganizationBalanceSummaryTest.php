@@ -160,6 +160,31 @@ class OrganizationBalanceSummaryTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('billing_unconfirmed');
     }
 
+    public function test_invoice_list_totals_cover_all_filtered_pages_only_for_the_selected_company(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $open = ['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()];
+        $this->invoices($company, [
+            ...array_fill(0, 26, $open),
+            [...$open, 'is_disputed' => true],
+            ['status' => 'open'],
+            ['status' => 'paid', 'outstanding_amount' => 0, 'status_checked_at' => now()],
+        ]);
+        $this->invoices(Organization::factory()->create(), [$open]);
+
+        $params = ['organization' => $company, 'status' => 'open'];
+        $this->actingAs($member)->get(route('organizations.invoices.index', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 25)
+                ->where('totals', ['count' => 28, 'unchecked' => 1, 'outstanding' => '3120000']));
+        $this->get(route('organizations.invoices.index', [...$params, 'page' => 2]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('invoices.data', 3)
+                ->where('totals.outstanding', '3120000'));
+    }
+
     private function invoices(Organization $company, array $rows): void
     {
         $customer = $company->customers()->create(['display_name' => 'Minta ügyfél']);
