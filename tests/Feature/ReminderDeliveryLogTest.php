@@ -35,9 +35,24 @@ class ReminderDeliveryLogTest extends TestCase
                     'invoiceNumber' => '00042',
                     'status' => 'unknown',
                     'reason' => 'transport_unconfirmed',
+                    'availableAt' => null,
                     'createdAt' => $local->created_at->toISOString(),
                     'updatedAt' => $local->updated_at->toISOString(),
                 ]));
+    }
+
+    public function test_log_exposes_the_earliest_scheduled_processing_time_when_available(): void
+    {
+        $this->freezeSecond();
+        $company = Organization::factory()->create();
+        $scheduledAt = now()->addMinutes(10);
+        $delivery = $this->delivery($this->invoice($company, '00042'), ReminderTestDeliveryStatus::Pending);
+        $delivery->update(['available_at' => $scheduledAt]);
+
+        $this->actingAs($this->memberOf($company))->get(route('organizations.reminder-deliveries.index', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('deliveries.data.0.status', 'pending')
+                ->where('deliveries.data.0.availableAt', $scheduledAt->toISOString()));
     }
 
     public function test_reason_status_and_exact_invoice_number_filter_together_and_are_validated(): void

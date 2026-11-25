@@ -24,7 +24,7 @@ class ReminderDeliveryLogController extends Controller
             ->when($reason !== null, fn ($query) => $query->where('reminder_test_deliveries.reason', $reason))
             ->select([
                 'reminder_test_deliveries.id', 'reminder_test_deliveries.status', 'reminder_test_deliveries.reason',
-                'reminder_test_deliveries.created_at', 'reminder_test_deliveries.updated_at',
+                'reminder_test_deliveries.available_at', 'reminder_test_deliveries.created_at', 'reminder_test_deliveries.updated_at',
                 'reminder_approvals.invoice_id', 'reminder_approvals.invoice_number',
             ])
             ->latest('reminder_test_deliveries.created_at')
@@ -37,6 +37,7 @@ class ReminderDeliveryLogController extends Controller
                 'invoiceNumber' => (string) $delivery->getAttribute('invoice_number'),
                 'status' => $delivery->status->value,
                 'reason' => $delivery->reason,
+                'availableAt' => $delivery->available_at?->toISOString(),
                 'createdAt' => $delivery->created_at->toISOString(),
                 'updatedAt' => $delivery->updated_at->toISOString(),
             ]);
