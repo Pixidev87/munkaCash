@@ -23,9 +23,10 @@ class InvoiceController extends Controller
     public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source', 'customer_id']);
         $invoices = $company->invoices()
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
+            ->when(isset($filters['customer_id']), fn ($query) => $query->where('customer_id', (int) $filters['customer_id']))
             ->when(isset($filters['source']), fn ($query) => $query->where('source', $filters['source']))
             ->when(isset($filters['status']), fn ($query) => $query->where('status', $filters['status']))
             ->when(isset($filters['disputed']), fn ($query) => $query->where('is_disputed', true))
@@ -38,6 +39,7 @@ class InvoiceController extends Controller
                 'id' => (string) $invoice->id,
                 'number' => $invoice->invoice_number,
                 'customer' => $invoice->customer->display_name,
+                'customerId' => (string) $invoice->customer_id,
                 'dueDate' => $invoice->due_date->toDateString(),
                 'gross' => $invoice->gross_amount,
                 'outstanding' => $invoice->outstanding_amount,
@@ -67,6 +69,7 @@ class InvoiceController extends Controller
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',
                 'source' => $filters['source'] ?? '',
+                'customerId' => (string) ($filters['customer_id'] ?? ''),
                 'disputed' => isset($filters['disputed']),
                 'overdue' => isset($filters['overdue']),
             ],

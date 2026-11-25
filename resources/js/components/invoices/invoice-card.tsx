@@ -3,7 +3,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { reminderPreview } from '@/routes/organizations/invoices';
+import { index, reminderPreview } from '@/routes/organizations/invoices';
 import { update } from '@/routes/organizations/invoices/balance';
 import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
@@ -23,6 +23,7 @@ export type Invoice = {
     id: string;
     number: string;
     customer: string;
+    customerId: string;
     dueDate: string;
     gross: number;
     outstanding: number | null;
@@ -64,9 +65,14 @@ export default function InvoiceCard({
                     <h3 className="font-semibold wrap-break-word">
                         {invoice.number}
                     </h3>
-                    <p className="text-sm wrap-break-word text-muted-foreground">
+                    <Link
+                        className="text-sm wrap-break-word text-muted-foreground underline"
+                        href={index(organizationId, {
+                            query: { customer_id: invoice.customerId },
+                        })}
+                    >
                         {invoice.customer}
-                    </p>
+                    </Link>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm text-muted-foreground">
