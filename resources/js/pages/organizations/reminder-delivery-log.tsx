@@ -32,6 +32,7 @@ type Props = {
         queuedFrom: string | null;
         queuedTo: string | null;
     };
+    exportUrl: string | null;
     totals: { total: number; byStatus: Record<DeliveryStatus, number> };
     deliveries: {
         data: Delivery[];
@@ -59,6 +60,7 @@ export default function ReminderDeliveryLog({
     filters,
     deliveries,
     totals,
+    exportUrl,
 }: Props) {
     const filtered =
         filters.status !== null ||
@@ -214,6 +216,12 @@ export default function ReminderDeliveryLog({
                     </div>
                 ))}
             </dl>
+            {exportUrl && totals.total > 0 && (
+                <Button asChild variant="outline">
+                    <a href={exportUrl}>Tesztküldések letöltése CSV-ben</a>
+                </Button>
+            )}
+
             {deliveries.data.length ? (
                 <ul
                     className="divide-y rounded-xl border"

@@ -166,6 +166,40 @@ class ReminderDeliveryLogTest extends TestCase
         $this->actingAs($owner)->get($url)->assertNotFound();
     }
 
+    public function test_owner_can_export_filtered_test_deliveries_without_addresses_or_message_content(): void
+    {
+        $company = Organization::factory()->create();
+        $member = $this->memberOf($company);
+        $owner = User::factory()->create();
+        $owner->organizations()->attach($company, ['role' => 'owner', 'status' => 'active']);
+        $invoice = $this->invoice($company, '+PILOT-42');
+        $invoice->customer->forceFill(['billing_email' => 'private@example.test'])->save();
+        $this->delivery($invoice, ReminderTestDeliveryStatus::Pending);
+        $this->delivery($invoice, ReminderTestDeliveryStatus::Unknown);
+        $this->delivery($this->invoice(Organization::factory()->create(), 'FOREIGN'), ReminderTestDeliveryStatus::Unknown);
+
+        $params = ['organization' => $company, 'status' => 'unknown', 'page' => 2];
+        $url = route('organizations.exports.reminder-deliveries', $params);
+        $list = route('organizations.reminder-deliveries.index', $params);
+        $this->actingAs($member)->get($url)->assertForbidden();
+        $this->get($list)->assertInertia(fn (Assert $page) => $page->where('exportUrl', null));
+
+        $this->actingAs($owner)->get($list)->assertInertia(fn (Assert $page) => $page
+            ->where('exportUrl', '/organizations/'.$company->id.'/exports/reminder-deliveries?status=unknown'));
+        $response = $this->get($url)->assertDownload('munkacash-tesztkuldesek-'.$company->id.'.csv');
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('invoice_number;status;reason;queued_at_utc;available_at_utc;updated_at_utc', $content);
+        $this->assertStringContainsString("'+PILOT-42;unknown;transport_unconfirmed;", $content);
+        $this->assertStringNotContainsString('FOREIGN', $content);
+        $this->assertStringNotContainsString('private@example.test', $content);
+        $this->assertStringNotContainsString(';pending;', $content);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $this->assertDatabaseHas('organization_access_events', [
+            'organization_id' => $company->id, 'actor_id' => $owner->id,
+            'action' => 'reminder_delivery_export',
+        ]);
+    }
+
     private function memberOf(Organization $company): User
     {
         $user = User::factory()->create();

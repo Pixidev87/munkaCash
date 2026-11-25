@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrganizationAccessAction;
 use App\Http\Requests\Invoices\ExportFilteredInvoicesRequest;
+use App\Http\Requests\Reminders\ExportReminderDeliveryLogRequest;
 use App\Models\Organization;
 use App\Models\OrganizationAccessEvent;
 use App\Services\InvoiceListQuery;
 use App\Services\OrganizationCsvExport;
+use App\Services\ReminderDeliveryLogQuery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -46,6 +48,18 @@ class OrganizationExportController extends Controller
         $this->recordRequest($request, $company, OrganizationAccessAction::FilteredInvoiceExport);
 
         return $export->filteredInvoices($company, $invoiceList->matching($company, $request->criteriaWithoutSort()));
+    }
+
+    public function reminderDeliveries(
+        ExportReminderDeliveryLogRequest $request,
+        ReminderDeliveryLogQuery $log,
+        OrganizationCsvExport $export,
+    ): StreamedResponse {
+        $company = $request->company();
+
+        $this->recordRequest($request, $company, OrganizationAccessAction::ReminderDeliveryExport);
+
+        return $export->reminderDeliveries($company, $log->matching($company, $request->criteria()));
     }
 
     private function recordRequest(Request $request, Organization $company, OrganizationAccessAction $action): void
