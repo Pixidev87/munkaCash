@@ -14,6 +14,11 @@ export const invoiceStatusLabels = {
     paid: 'Fizetve',
 };
 
+export const invoiceSourceLabels = {
+    manual: 'Kézi rögzítés',
+    csv: 'CSV-import',
+};
+
 export type Invoice = {
     id: string;
     number: string;
@@ -22,6 +27,7 @@ export type Invoice = {
     gross: number;
     outstanding: number | null;
     status: keyof typeof invoiceStatusLabels;
+    source: keyof typeof invoiceSourceLabels | null;
     checkedAt: string | null;
     checker: string | null;
     revision: number;
@@ -63,6 +69,11 @@ export default function InvoiceCard({
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                        {invoice.source === null
+                            ? 'Ismeretlen forrás'
+                            : invoiceSourceLabels[invoice.source]}
+                    </p>
                     <p className="rounded-md bg-muted px-2 py-1 text-sm">
                         {invoiceStatusLabels[invoice.status]}
                     </p>

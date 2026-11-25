@@ -1,6 +1,7 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import InvoiceCard, {
+    invoiceSourceLabels,
     invoiceStatusLabels,
     type Invoice,
 } from '@/components/invoices/invoice-card';
@@ -21,6 +22,7 @@ type Props = {
     filters: {
         invoiceNumber: string;
         status: string;
+        source: string;
         disputed: boolean;
         overdue: boolean;
     };
@@ -44,6 +46,7 @@ export default function InvoicesPage({
     const hasFilters = Boolean(
         filters.invoiceNumber ||
         filters.status ||
+        filters.source ||
         filters.disputed ||
         filters.overdue,
     );
@@ -268,6 +271,27 @@ export default function InvoicesPage({
                                         ))}
                                     </select>
                                     <InputError message={errors.status} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="filter-invoice-source">
+                                        Számla forrása
+                                    </Label>
+                                    <select
+                                        id="filter-invoice-source"
+                                        name="source"
+                                        defaultValue={filters.source}
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    >
+                                        <option value="">Összes forrás</option>
+                                        {Object.entries(
+                                            invoiceSourceLabels,
+                                        ).map(([source, label]) => (
+                                            <option key={source} value={source}>
+                                                {label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.source} />
                                 </div>
                             </div>
                             <label className="flex items-center gap-2 text-sm">

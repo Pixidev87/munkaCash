@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceSource;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\FilterInvoicesRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
@@ -22,9 +23,10 @@ class InvoiceController extends Controller
     public function index(FilterInvoicesRequest $request, string $organization, OverdueInvoices $overdueInvoices): Response
     {
         $company = $request->user()->findActiveOrganization($organization);
-        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue']);
+        $filters = $request->safe()->only(['invoice_number', 'status', 'disputed', 'overdue', 'source']);
         $invoices = $company->invoices()
             ->when(isset($filters['invoice_number']), fn ($query) => $query->where('invoice_number', $filters['invoice_number']))
+            ->when(isset($filters['source']), fn ($query) => $query->where('source', $filters['source']))
             ->when(isset($filters['status']), fn ($query) => $query->where('status', $filters['status']))
             ->when(isset($filters['disputed']), fn ($query) => $query->where('is_disputed', true))
             ->when(isset($filters['overdue']), fn ($query) => $query->whereIn('id', $overdueInvoices->queryFor($company)->select('id')))
@@ -40,6 +42,7 @@ class InvoiceController extends Controller
                 'gross' => $invoice->gross_amount,
                 'outstanding' => $invoice->outstanding_amount,
                 'status' => $invoice->status->value,
+                'source' => InvoiceSource::tryFrom($invoice->source)?->value,
                 'checkedAt' => $invoice->status_checked_at?->toISOString(),
                 'checker' => $invoice->checker?->name,
                 'revision' => $invoice->revision,
@@ -63,6 +66,7 @@ class InvoiceController extends Controller
             'filters' => [
                 'invoiceNumber' => $filters['invoice_number'] ?? '',
                 'status' => $filters['status'] ?? '',
+                'source' => $filters['source'] ?? '',
                 'disputed' => isset($filters['disputed']),
                 'overdue' => isset($filters['overdue']),
             ],

@@ -115,7 +115,35 @@ class InvoiceImportTest extends TestCase
         $matching = $this->upload($company, "{$customer};00043;2026-12-01;HUF;130000");
         $this->confirm($company, $matching)->assertSessionHasNoErrors();
         $this->assertSame(1, $matching->fresh()->unchanged_count);
-        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'outstanding_amount' => 0, 'status' => 'paid']);
+        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'outstanding_amount' => 0, 'status' => 'paid', 'source' => 'manual']);
+    }
+
+    public function test_invoice_list_shows_and_filters_the_original_source(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $this->actingAs($user);
+        $batch = $this->upload($company, "{$customer};00042;2026-12-01;HUF;10000");
+        $this->confirm($company, $batch)->assertSessionHasNoErrors();
+        $company->invoices()->create([
+            'customer_id' => $customer,
+            'invoice_number' => '00043',
+            'due_date' => '2026-12-01',
+            'gross_amount' => 10_000,
+        ]);
+
+        $list = route('organizations.invoices.index', $company);
+        $this->get($list.'?source=csv&status=unchecked')->assertInertia(fn (Assert $page) => $page
+            ->where('filters.source', 'csv')
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.source', 'csv')
+            ->where('invoices.data.0.number', '00042'));
+        $this->get($list.'?source=manual')->assertInertia(fn (Assert $page) => $page
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.source', 'manual')
+            ->where('invoices.data.0.number', '00043'));
+        $this->from($list)->get($list.'?source=invalid')
+            ->assertRedirect($list)
+            ->assertSessionHasErrorsIn('invoiceFilters', 'source');
     }
 
     public function test_batches_are_private_to_their_uploader_and_reject_foreign_customer_ids(): void

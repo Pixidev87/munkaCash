@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceSource;
 use App\Models\Invoice;
 use App\Models\Organization;
 
@@ -117,7 +118,7 @@ class InvoiceCsvImport
         $created = 0;
         foreach ($rows as $row) {
             if ($row['status'] === 'new' && $row['data'] !== null) {
-                $company->invoices()->make($row['data'])->forceFill(['source' => 'csv'])->save();
+                $company->invoices()->make($row['data'])->forceFill(['source' => InvoiceSource::Csv->value])->save();
                 $created++;
             }
         }
