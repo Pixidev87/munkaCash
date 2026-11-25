@@ -7,6 +7,8 @@ export const deliveryLabels = {
 };
 
 export const deliveryReasons: Record<string, string> = {
+    pilot_restored:
+        'A pilot mentésének visszaállításakor a várakozó küldés leállt.',
     organization_closing: 'A cég írásvédett állapotban van.',
     organization_paused: 'A cég emlékeztetői szünetelnek.',
     balance_unverified: 'A számla fennálló összege új ellenőrzést igényel.',
