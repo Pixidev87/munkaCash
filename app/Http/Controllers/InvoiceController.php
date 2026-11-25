@@ -36,7 +36,12 @@ class InvoiceController extends Controller
         $matching = $invoiceList->matching($company, $filters);
         $totals = $invoiceList->totals($matching);
         $invoices = $matching
-            ->with(['customer:id,display_name', 'checker:id,name'])
+            ->with([
+                'customer:id,display_name',
+                'checker:id,name',
+                'importBatch' => fn ($query) => $query
+                    ->availableTo($company->id, $request->user()->id)->whereNull('rows')->select('id'),
+            ])
             ->orderBy($sortColumn, $sortDirection)
             ->when($sortColumn !== 'id', fn ($query) => $query->latest('id'))
             ->simplePaginate(25)
@@ -44,6 +49,7 @@ class InvoiceController extends Controller
             ->through(fn (Invoice $invoice): array => [
                 'id' => (string) $invoice->id,
                 'number' => $invoice->invoice_number,
+                'importBatchId' => $invoice->importBatch?->id,
                 'customer' => $invoice->customer->display_name,
                 'customerId' => (string) $invoice->customer_id,
                 'dueDate' => $invoice->due_date->toDateString(),

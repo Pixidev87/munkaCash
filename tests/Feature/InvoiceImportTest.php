@@ -389,9 +389,11 @@ class InvoiceImportTest extends TestCase
         $this->confirm($company, $second)->assertSessionHasNoErrors();
         $this->get(route($route, $params))->assertInertia(fn (Assert $page) => $page
             ->where('filters.importBatchId', $first->id)->has('invoices.data', 1)
-            ->where('invoices.data.0.number', 'FROM-A'));
+            ->where('invoices.data.0.number', 'FROM-A')->where('invoices.data.0.importBatchId', $first->id));
         $this->actingAs($coworker)->getJson(route($route, $params))
             ->assertUnprocessable()->assertJsonValidationErrors('import_batch');
+        $this->get(route($route, [$company, 'invoice_number' => 'FROM-A']))
+            ->assertInertia(fn (Assert $page) => $page->where('invoices.data.0.importBatchId', null));
         $first->update(['expires_at' => now()]);
         $this->actingAs($user)->getJson(route($route, $params))
             ->assertUnprocessable()->assertJsonValidationErrors('import_batch');

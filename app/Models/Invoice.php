@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int $revision
  * @property-read Customer $customer
  * @property-read User|null $checker
+ * @property-read InvoiceImport|null $importBatch
  */
 #[Fillable(['customer_id', 'invoice_number', 'due_date', 'gross_amount'])]
 class Invoice extends Model
