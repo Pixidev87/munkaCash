@@ -18,9 +18,10 @@ use Illuminate\Support\Carbon;
  * @property list<StoredCsvRow>|null $rows
  * @property int|null $created_count
  * @property int|null $unchanged_count
+ * @property Carbon|null $confirmed_at
  * @property Carbon $expires_at
  */
-#[Fillable(['organization_id', 'user_id', 'rows', 'created_count', 'unchanged_count', 'expires_at'])]
+#[Fillable(['organization_id', 'user_id', 'rows', 'created_count', 'unchanged_count', 'confirmed_at', 'expires_at'])]
 class InvoiceImport extends Model
 {
     use HasUuids, MassPrunable;
@@ -31,6 +32,7 @@ class InvoiceImport extends Model
             'rows' => 'array',
             'created_count' => 'integer',
             'unchanged_count' => 'integer',
+            'confirmed_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
     }

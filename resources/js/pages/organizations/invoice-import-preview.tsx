@@ -44,6 +44,7 @@ type Props = {
         created: number;
         unchanged: number;
         hasTrackedInvoices: boolean;
+        confirmedAt: string | null;
     } | null;
 };
 
@@ -109,6 +110,16 @@ export default function InvoiceImportPreview({
                     className="space-y-3 rounded-xl border p-4"
                     aria-label="Import összesítése"
                 >
+                    {summary.confirmedAt && (
+                        <p className="text-sm text-muted-foreground">
+                            Megerősítve{' '}
+                            <time dateTime={summary.confirmedAt}>
+                                {timestamp.format(
+                                    new Date(summary.confirmedAt),
+                                )}
+                            </time>
+                        </p>
+                    )}
                     <p>Létrehozva: {summary.created} számla</p>
                     <p>Változatlan: {summary.unchanged} számla</p>
                     <div className="flex flex-wrap gap-2">
