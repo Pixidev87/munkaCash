@@ -249,7 +249,7 @@ class InvoiceTrackingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('invoices.data', 1)
                 ->where('invoices.data.0.id', (string) $matching->id)
-                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'customerId' => '', 'disputed' => true, 'overdue' => false, 'awaitingBalance' => false, 'billingUnconfirmed' => false]));
+                ->where('filters', ['invoiceNumber' => '00042%_', 'status' => 'open', 'source' => '', 'customerId' => '', 'disputed' => true, 'overdue' => false, 'awaitingBalance' => false, 'billingUnconfirmed' => false, 'sort' => '']));
         $this->get($route.'?status=paid&disputed=1')
             ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
 
@@ -295,6 +295,34 @@ class InvoiceTrackingTest extends TestCase
                 ->assertRedirect($list)
                 ->assertSessionHasErrorsIn('invoiceFilters', 'customer_id');
         }
+    }
+
+    public function test_invoice_sorting_uses_deadlines_and_amounts_and_validates_the_sort_key(): void
+    {
+        $company = Organization::factory()->create();
+        $user = User::factory()->create();
+        $user->organizations()->attach($company, ['status' => 'active']);
+        $old = $this->createInvoice($company);
+        $old->forceFill(['due_date' => '2026-03-01', 'outstanding_amount' => 30_000])->save();
+        $new = $old->replicate()->forceFill([
+            'invoice_number' => '00043', 'due_date' => '2026-03-03', 'outstanding_amount' => 10_000,
+        ]);
+        $new->save();
+        $unknown = $old->replicate()->forceFill(['invoice_number' => '00044', 'outstanding_amount' => null]);
+        $unknown->save();
+        $this->actingAs($user);
+
+        foreach (['due_asc' => ['00044', '00042', '00043'], 'due_desc' => ['00043', '00044', '00042'],
+            'outstanding_desc' => ['00042', '00043', '00044']] as $sort => $numbers) {
+            $this->get(route('organizations.invoices.index', [$company, 'sort' => $sort]))
+                ->assertInertia(fn (Assert $page) => $page->where('filters.sort', $sort)
+                    ->where('invoices.data.0.number', $numbers[0])
+                    ->where('invoices.data.1.number', $numbers[1])
+                    ->where('invoices.data.2.number', $numbers[2]));
+        }
+
+        $this->getJson(route('organizations.invoices.index', [$company, 'sort' => 'unknown']))
+            ->assertUnprocessable()->assertJsonValidationErrors('sort');
     }
 
     public function test_invoice_pagination_preserves_applied_filters(): void
