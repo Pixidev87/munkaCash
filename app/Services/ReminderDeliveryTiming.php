@@ -7,17 +7,16 @@ use App\Models\Invoice;
 use App\Models\ReminderApproval;
 use App\Models\ReminderTestDelivery;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Config;
 
 class ReminderDeliveryTiming
 {
-    private const string TIMEZONE = 'Europe/Budapest';
-
     private const int OPEN_HOUR = 8;
 
     private const int CLOSE_HOUR = 18;
 
     private const int COOL_DOWN_DAYS = 7;
+
+    public function __construct(private readonly HungarianWorkCalendar $calendar) {}
 
     public function lastAttempt(Invoice $invoice): ?CarbonImmutable
     {
@@ -40,10 +39,10 @@ class ReminderDeliveryTiming
         }
 
         $candidate = ($cooldown !== null && $cooldown->gt($now) ? $cooldown : $now)
-            ->setTimezone(self::TIMEZONE);
+            ->setTimezone(HungarianWorkCalendar::TIMEZONE);
 
         while ($candidate->lt($expires)) {
-            $workday = $this->workday($candidate);
+            $workday = $this->calendar->isWorkday($candidate);
             if ($workday === null) {
                 return ['at' => null, 'reason' => 'calendar_unavailable'];
             }
@@ -60,18 +59,5 @@ class ReminderDeliveryTiming
         }
 
         return ['at' => null, 'reason' => 'outside_window'];
-    }
-
-    private function workday(CarbonImmutable $date): ?bool
-    {
-        $calendar = Config::get('reminder-calendar.'.$date->year);
-        if (! is_array($calendar)) {
-            return null;
-        }
-
-        $day = $date->format('m-d');
-
-        return ! in_array($day, $calendar['days_off'], true)
-            && ($date->isWeekday() || in_array($day, $calendar['workdays'], true));
     }
 }

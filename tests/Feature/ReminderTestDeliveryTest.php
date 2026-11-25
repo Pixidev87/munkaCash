@@ -269,6 +269,22 @@ class ReminderTestDeliveryTest extends TestCase
         }
     }
 
+    public function test_worker_rechecks_the_adjusted_deadline_before_sending_a_queued_reminder(): void
+    {
+        [, , , $approval] = $this->approvedDraft(dueDate: '2026-12-01');
+        $delivery = $approval->testDelivery()->create(['status' => 'pending']);
+        config(['reminder-calendar.2026.days_off' => ['12-01']]);
+
+        $this->mock(ReminderTestMailer::class)->shouldNotReceive('send');
+        app()->call((new SendReminderTest($delivery->id))->handle(...));
+
+        $this->assertDatabaseHas('reminder_test_deliveries', [
+            'id' => $delivery->id,
+            'status' => 'blocked',
+            'reason' => 'approval_changed',
+        ]);
+    }
+
     public function test_previous_accepted_and_uncertain_attempts_count_toward_the_seven_day_limit(): void
     {
         foreach (['accepted', 'unknown'] as $priorStatus) {
@@ -290,7 +306,7 @@ class ReminderTestDeliveryTest extends TestCase
     }
 
     /** @return array{Organization, User, Invoice, ReminderApproval} */
-    private function approvedDraft(string $recipient = 'billing@example.test', string $at = '2026-12-02 10:00:00'): array
+    private function approvedDraft(string $recipient = 'billing@example.test', string $at = '2026-12-02 10:00:00', ?string $dueDate = null): array
     {
         $this->travelTo(Carbon::parse($at, 'Europe/Budapest'));
         $company = Organization::factory()->create(['reminders_enabled' => true]);
@@ -304,7 +320,7 @@ class ReminderTestDeliveryTest extends TestCase
         $invoice = $company->invoices()->create([
             'customer_id' => $customer->id,
             'invoice_number' => '00042',
-            'due_date' => now('Europe/Budapest')->subDay()->toDateString(),
+            'due_date' => $dueDate ?? now('Europe/Budapest')->subWeek()->toDateString(),
             'gross_amount' => 120_000,
         ]);
         $invoice->forceFill([

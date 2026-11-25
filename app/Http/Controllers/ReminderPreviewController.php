@@ -35,6 +35,7 @@ class ReminderPreviewController extends Controller
             'invoiceId' => (string) $selected->id,
             'number' => $selected->invoice_number,
             'dueDate' => $selected->due_date->toDateString(),
+            'effectiveDueDate' => $draft['effectiveDueDate'],
             'gross' => $selected->gross_amount,
             'outstanding' => $selected->outstanding_amount,
             'checkedAt' => $selected->status_checked_at?->toISOString(),

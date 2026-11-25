@@ -8,6 +8,7 @@ use App\Services\InvoiceCsvParser;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -19,6 +20,7 @@ class PilotDemoTest extends TestCase
 
     public function test_demo_accounts_data_and_generated_csv_use_the_real_pilot_workflow(): void
     {
+        $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
         $this->assertSame(Command::SUCCESS, Artisan::call('munkacash:demo'));
         $output = Artisan::output();
 

@@ -19,6 +19,7 @@ type Props = {
     invoiceId: string;
     number: string;
     dueDate: string;
+    effectiveDueDate: string | null;
     gross: number;
     outstanding: number | null;
     checkedAt: string | null;
@@ -73,6 +74,7 @@ export default function ReminderPreviewPage({
     invoiceId,
     number,
     dueDate,
+    effectiveDueDate,
     gross,
     outstanding,
     checkedAt,
@@ -119,6 +121,18 @@ export default function ReminderPreviewPage({
                         <time dateTime={dueDate}>{dueDate}</time>
                     </dd>
                 </div>
+                {effectiveDueDate && effectiveDueDate !== dueDate && (
+                    <div>
+                        <dt className="text-muted-foreground">
+                            Figyelembe vett határidő
+                        </dt>
+                        <dd>
+                            <time dateTime={effectiveDueDate}>
+                                {effectiveDueDate}
+                            </time>
+                        </dd>
+                    </div>
+                )}
                 <div>
                     <dt className="text-muted-foreground">Bruttó összeg</dt>
                     <dd>{huf.format(gross)}</dd>

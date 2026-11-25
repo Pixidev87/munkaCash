@@ -11,10 +11,14 @@ class ReminderPreview
 {
     public const string TEMPLATE_VERSION = 'v1';
 
-    /** @return array{blockers: list<string>, message: array{recipient: string, subject: string, body: string}|null, fingerprint: string|null} */
+    public function __construct(private readonly HungarianWorkCalendar $calendar) {}
+
+    /** @return array{effectiveDueDate: string|null, blockers: list<string>, message: array{recipient: string, subject: string, body: string}|null, fingerprint: string|null} */
     public function prepare(Organization $company, Invoice $invoice): array
     {
-        $blockers = $this->blockers($invoice);
+        $originalDueDate = $invoice->due_date->toDateString();
+        $effectiveDueDate = $this->calendar->effectiveDeadline($invoice->due_date)?->toDateString();
+        $blockers = $this->blockers($invoice, $effectiveDueDate);
         $recipient = $invoice->customer->billing_email;
         $outstanding = $invoice->outstanding_amount;
 
@@ -23,6 +27,7 @@ class ReminderPreview
             : null;
 
         return [
+            'effectiveDueDate' => $effectiveDueDate,
             'blockers' => $blockers,
             'message' => $message,
             'fingerprint' => $message === null ? null : hash_hmac('sha256', json_encode([
@@ -32,7 +37,7 @@ class ReminderPreview
                 $invoice->id,
                 $invoice->revision,
                 $invoice->status->value,
-                $invoice->due_date->toDateString(),
+                $originalDueDate,
                 $invoice->currency,
                 $invoice->gross_amount,
                 $invoice->outstanding_amount,
@@ -40,12 +45,14 @@ class ReminderPreview
                 $invoice->customer_id,
                 $invoice->customer->billing_email_revision,
                 $message,
+                // Preserve existing approvals when the calendar leaves the deadline unchanged.
+                ...($effectiveDueDate === $originalDueDate ? [] : [$effectiveDueDate]),
             ], JSON_THROW_ON_ERROR), Config::string('app.key')),
         ];
     }
 
     /** @return list<string> */
-    private function blockers(Invoice $invoice): array
+    private function blockers(Invoice $invoice, ?string $effectiveDueDate): array
     {
         $messages = [];
 
@@ -53,7 +60,9 @@ class ReminderPreview
             $messages[] = 'A számla vitatott. Emlékeztető csak a vita feloldása után hagyható jóvá.';
         }
 
-        if ($invoice->due_date->toDateString() >= today('Europe/Budapest')->toDateString()) {
+        if ($effectiveDueDate === null) {
+            $messages[] = 'A fizetési határidőhöz még nincs ellenőrzött munkanaptár.';
+        } elseif ($effectiveDueDate >= today(HungarianWorkCalendar::TIMEZONE)->toDateString()) {
             $messages[] = 'A számla fizetési határideje még nem járt le.';
         }
 

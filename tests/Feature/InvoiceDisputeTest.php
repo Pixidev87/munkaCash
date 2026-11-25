@@ -11,12 +11,20 @@ use App\Models\User;
 use App\Services\ReminderPreview;
 use App\Services\ReminderTestMailer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class InvoiceDisputeTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(Carbon::parse('2026-12-02 10:00:00', 'Europe/Budapest'));
+    }
 
     public function test_marking_a_dispute_keeps_the_balance_and_stops_only_its_queued_delivery(): void
     {
