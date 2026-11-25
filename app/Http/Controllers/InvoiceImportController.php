@@ -103,6 +103,7 @@ class InvoiceImportController extends Controller
         $company = $user->findActiveOrganization($organization);
         $batch = $this->availableBatches($company->id, $user->id)->findOrFail($import);
         $rows = $batch->rows === null ? [] : $service->preview($company, $batch->rows);
+        $counts = array_count_values(array_column($rows, 'status'));
 
         return Inertia::render('organizations/invoice-import-preview', [
             'organizationId' => $organization,
@@ -114,6 +115,12 @@ class InvoiceImportController extends Controller
                     'customer_id' => (string) $row['data']['customer_id'],
                 ],
             ], $rows),
+            'previewCounts' => $batch->rows === null ? null : [
+                'new' => $counts['new'] ?? 0,
+                'unchanged' => $counts['unchanged'] ?? 0,
+                'invalid' => $counts['invalid'] ?? 0,
+                'conflict' => $counts['conflict'] ?? 0,
+            ],
             'canImport' => $service->canImport($rows),
             'summary' => $batch->rows === null ? [
                 'created' => $batch->created_count,

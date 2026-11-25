@@ -71,6 +71,7 @@ class InvoiceImportTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('canImport', false)
                 ->where('rows.0.status', 'new')
                 ->where('rows.1.status', 'invalid')
+                ->where('previewCounts', ['new' => 1, 'unchanged' => 0, 'invalid' => 2, 'conflict' => 2])
                 ->where('rows.1.line', 3)
                 ->where('rows.1.errors.0.code', 'invalid_value')
                 ->where('rows.1.errors.0.column', 'due_date')
