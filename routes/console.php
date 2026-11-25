@@ -29,5 +29,5 @@ Schedule::command('model:prune', ['--model' => [
 
 Schedule::call(fn () => app(ReminderTestQueue::class)->dispatchPending())
     ->name('reminder-test-delivery')
-    ->environments(['local', 'testing'])
+    ->environments(['local', 'testing', 'closed-pilot'])
     ->everyMinute();
