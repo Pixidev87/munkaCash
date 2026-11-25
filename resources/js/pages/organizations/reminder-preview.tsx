@@ -16,6 +16,7 @@ import {
 } from '@/routes/organizations/invoices';
 
 import { destroy as cancelDelivery } from '@/routes/organizations/invoices/reminder-test-delivery';
+import { index as deliveryLog } from '@/routes/organizations/reminder-deliveries';
 
 type Props = {
     organizationId: string;
@@ -221,6 +222,16 @@ export default function ReminderPreviewPage({
                 Jóváhagyási előzmények
             </Link>
 
+            <div>
+                <Link
+                    className="text-sm underline"
+                    href={deliveryLog(organizationId, {
+                        query: { invoice_number: number },
+                    })}
+                >
+                    Számla tesztküldési naplója
+                </Link>
+            </div>
             {approval && (
                 <section
                     className="space-y-2 rounded-xl border p-4"
