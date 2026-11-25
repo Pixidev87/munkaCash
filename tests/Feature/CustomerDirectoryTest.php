@@ -92,6 +92,32 @@ class CustomerDirectoryTest extends TestCase
         $this->get($list)->assertInertia(fn (Assert $page) => $page->where('customers.data.0.name', 'Új partner'));
     }
 
+    public function test_renaming_preserves_the_customer_link_and_rejects_stale_and_foreign_changes(): void
+    {
+        $company = Organization::factory()->create();
+        $other = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach([$company->id, $other->id], ['status' => 'active']);
+        $customer = $company->customers()->create(['display_name' => 'Régi név']);
+        $customer->forceFill(['billing_email' => 'cim@example.test', 'billing_email_confirmed_at' => now()])->save();
+        $foreign = $other->customers()->create(['display_name' => 'Régi név']);
+        $invoice = $company->invoices()->create([
+            'customer_id' => $customer->id, 'invoice_number' => '001', 'due_date' => '2026-12-01', 'gross_amount' => 10_000,
+        ]);
+        $list = route('organizations.customers.index', $company);
+        $rename = route('organizations.customers.update', [$company, $customer]);
+        $payload = ['display_name' => 'Javított név', 'previous_name' => 'Régi név'];
+
+        $this->actingAs($member)->from($list)->patch($rename, $payload)->assertRedirect($list);
+        $this->patch($rename, [...$payload, 'display_name' => 'Elavult módosítás'])
+            ->assertSessionHasErrorsIn('customer-name-'.$customer->id, 'display_name');
+        $this->patch(route('organizations.customers.update', [$company, $foreign]), $payload)->assertNotFound();
+        $this->assertSame('Javított név', $customer->refresh()->display_name);
+        $this->assertSame('cim@example.test', $customer->billing_email);
+        $this->assertNotNull($customer->billing_email_confirmed_at);
+        $this->assertSame($customer->id, $invoice->refresh()->customer_id);
+    }
+
     public function test_directory_remains_readable_only_until_the_closeout_deadline(): void
     {
         $this->freezeSecond();

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
-import { index, store } from '@/routes/organizations/customers';
+import { index, store, update } from '@/routes/organizations/customers';
 import { edit } from '@/routes/organizations/customers/billing-contact';
 import { index as invoices } from '@/routes/organizations/invoices';
 
@@ -199,6 +199,59 @@ export default function Customers({
                                     </Link>
                                 </Button>
                             </div>
+                            {!organizationReadOnly && (
+                                <details className="space-y-2">
+                                    <summary className="cursor-pointer text-sm font-medium">
+                                        Ügyfélnév módosítása
+                                    </summary>
+                                    <Form
+                                        key={customer.name}
+                                        {...update.form({
+                                            organization: organization.id,
+                                            customer: customer.id,
+                                        })}
+                                        errorBag={`customer-name-${customer.id}`}
+                                        options={{ preserveScroll: true }}
+                                        className="space-y-2"
+                                    >
+                                        {({ errors, processing }) => (
+                                            <>
+                                                <input
+                                                    type="hidden"
+                                                    name="previous_name"
+                                                    value={customer.name}
+                                                />
+                                                <Label
+                                                    htmlFor={`customer-name-${customer.id}`}
+                                                >
+                                                    Új ügyfélnév
+                                                </Label>
+                                                <Input
+                                                    id={`customer-name-${customer.id}`}
+                                                    name="display_name"
+                                                    maxLength={255}
+                                                    required
+                                                    defaultValue={customer.name}
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors.display_name ??
+                                                        errors.previous_name
+                                                    }
+                                                    role="alert"
+                                                />
+                                                <Button
+                                                    type="submit"
+                                                    variant="outline"
+                                                    disabled={processing}
+                                                >
+                                                    Név mentése
+                                                </Button>
+                                            </>
+                                        )}
+                                    </Form>
+                                </details>
+                            )}
                         </li>
                     ))}
                 </ul>
