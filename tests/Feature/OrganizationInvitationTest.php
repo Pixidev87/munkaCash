@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrganizationAccessAction;
 use App\Models\Organization;
+use App\Models\OrganizationAccessEvent;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -153,6 +155,68 @@ class OrganizationInvitationTest extends TestCase
         ])->assertRedirect()->assertInertiaFlash('invitationCancellation', 'not_found');
 
         $this->actingAs($recipient)->get(route('organizations.show', $company))->assertOk();
+    }
+
+    public function test_access_log_records_successful_changes_and_is_visible_only_to_the_company_owner(): void
+    {
+        [$company, $owner] = $this->companyWithOwner();
+        [$other, $otherOwner] = $this->companyWithOwner();
+        $recipient = User::factory()->create();
+        $otherRecipient = User::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['role' => 'member', 'status' => 'active']);
+
+        $link = $this->issue($company, $owner, $recipient->email);
+        $this->issue($other, $otherOwner, $otherRecipient->email);
+        $this->actingAs($recipient)->post($link)->assertRedirect(route('organizations.show', $company));
+        $this->post($link)->assertNotFound();
+
+        $this->issue($company, $owner, 'cancel@example.test');
+        $cancel = route('organizations.members.invitations.destroy', $company);
+        $this->delete($cancel, ['email' => 'cancel@example.test'])->assertRedirect();
+        $this->delete($cancel, ['email' => 'cancel@example.test'])->assertRedirect();
+
+        $revoke = route('organizations.members.destroy', [$company, $recipient]);
+        $this->delete($revoke, ['confirm' => true])->assertRedirect();
+        $this->delete($revoke, ['confirm' => true])->assertRedirect();
+
+        $route = route('organizations.access-log', $company);
+        $this->actingAs($member)->get($route)->assertForbidden();
+        $this->actingAs($otherOwner)->get($route)->assertNotFound();
+        $this->actingAs($owner)->get($route)
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('organizations/access-log')
+                ->has('events.data', 5)
+                ->where('events.data.0.action', 'member_revoked')
+                ->where('events.data.0.actor', $owner->name)
+                ->where('events.data.0.subject', $recipient->name)
+                ->where('events.data.1.action', 'invitation_cancelled')
+                ->where('events.data.2.action', 'invitation_issued')
+                ->where('events.data.2.subject', null)
+                ->where('events.data.3.action', 'invitation_accepted')
+                ->where('events.data.3.actor', $recipient->name)
+                ->missing('events.data.3.email')
+                ->missing('events.data.3.token')
+                ->where('events.data.4.action', 'invitation_issued'));
+    }
+
+    public function test_access_log_retention_and_deletion_follow_the_organization(): void
+    {
+        $this->freezeSecond();
+        [$company, $owner] = $this->companyWithOwner();
+        $this->travel(-90)->days();
+        OrganizationAccessEvent::record($company, $owner, OrganizationAccessAction::InvitationIssued);
+        $this->travelBack();
+        OrganizationAccessEvent::record($company, $owner, OrganizationAccessAction::InvitationCancelled);
+        $this->actingAs($owner)->get(route('organizations.access-log', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('events.data', 1)
+                ->where('events.data.0.action', 'invitation_cancelled'));
+
+        $this->artisan('model:prune', ['--model' => [OrganizationAccessEvent::class]])->assertSuccessful();
+        $this->assertDatabaseCount('organization_access_events', 1);
+        $company->deleteOrFail();
+        $this->assertDatabaseCount('organization_access_events', 0);
     }
 
     /** @return array{Organization, User} */

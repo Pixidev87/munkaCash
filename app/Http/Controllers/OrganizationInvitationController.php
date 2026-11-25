@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrganizationAccessAction;
 use App\Http\Requests\Organizations\OrganizationInvitationEmailRequest;
 use App\Models\Organization;
+use App\Models\OrganizationAccessEvent;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,6 +31,8 @@ class OrganizationInvitationController extends Controller
             'expires_at' => $now->copy()->addDay(),
         ]);
 
+        OrganizationAccessEvent::record($company, $request->user(), OrganizationAccessAction::InvitationIssued);
+
         Inertia::flash('invitationPath', route('organization-invitations.show', $token, absolute: false));
 
         return to_route('organizations.members.index', $company);
@@ -42,6 +46,10 @@ class OrganizationInvitationController extends Controller
             ->where('email_digest', OrganizationInvitation::digestEmail($request->email()))
             ->where('expires_at', '>', now())
             ->delete();
+
+        if ($cancelled > 0) {
+            OrganizationAccessEvent::record($company, $request->user(), OrganizationAccessAction::InvitationCancelled);
+        }
 
         Inertia::flash('invitationCancellation', $cancelled > 0 ? 'cancelled' : 'not_found');
 
@@ -94,6 +102,7 @@ class OrganizationInvitationController extends Controller
                 ]);
             }
             $current->deleteOrFail();
+            OrganizationAccessEvent::record($company, $recipient, OrganizationAccessAction::InvitationAccepted);
         }, attempts: 3);
 
         return to_route('organizations.show', $invitation->organization_id);
