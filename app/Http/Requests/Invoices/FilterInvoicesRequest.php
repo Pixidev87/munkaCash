@@ -25,6 +25,7 @@ class FilterInvoicesRequest extends FormRequest
             'source' => ['nullable', Rule::enum(InvoiceSource::class)],
             'status' => ['nullable', Rule::enum(InvoiceStatus::class)],
             'disputed' => ['nullable', 'in:1'],
+            'awaiting_balance' => ['nullable', 'in:1'],
             'overdue' => ['nullable', 'in:1'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
@@ -38,6 +39,7 @@ class FilterInvoicesRequest extends FormRequest
             'invoice_number.*' => 'A számlaszám legfeljebb 100 karakter lehet.',
             'source.*' => 'Válassz érvényes számlaforrást.',
             'status.*' => 'Válassz érvényes fizetési állapotot.',
+            'awaiting_balance.*' => 'Az egyenleg-ellenőrzési szűrő érvénytelen.',
             'overdue.*' => 'A lejárt számlák szűrője érvénytelen.',
             'disputed.*' => 'A vitatott számlák szűrője érvénytelen.',
             'page.*' => 'Az oldalszám legyen pozitív egész szám.',

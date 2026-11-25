@@ -93,6 +93,34 @@ class OrganizationBalanceSummaryTest extends TestCase
             ->where('invoices.data.0.number', 'DEMO-0'));
     }
 
+    public function test_balance_review_filter_matches_the_company_summary_and_can_combine_with_other_filters(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $this->invoices(Organization::factory()->create(), [[]]);
+        $this->invoices($company, [
+            [],
+            ['status' => 'open', 'outstanding_amount' => 120_000],
+            ['status_checked_at' => now(), 'is_disputed' => true],
+            ['status' => 'paid', 'outstanding_amount' => 0, 'status_checked_at' => now()],
+        ]);
+        $params = ['organization' => $company, 'awaiting_balance' => 1];
+
+        $this->actingAs($member)->get(route('organizations.show', $company))
+            ->assertInertia(fn (Assert $page) => $page->where('balanceSummary.unchecked', 3));
+        $this->get(route('organizations.invoices.index', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.awaitingBalance', true)
+                ->has('invoices.data', 3)
+                ->where('invoices.data.0.number', 'DEMO-2')
+                ->where('invoices.data.2.number', 'DEMO-0'));
+        $this->get(route('organizations.invoices.index', [...$params, 'disputed' => 1]))
+            ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 1)->where('invoices.data.0.number', 'DEMO-2'));
+        $this->getJson(route('organizations.invoices.index', [...$params, 'awaiting_balance' => 0]))
+            ->assertUnprocessable()->assertJsonValidationErrors('awaiting_balance');
+    }
+
     private function invoices(Organization $company, array $rows): void
     {
         $customer = $company->customers()->create(['display_name' => 'Minta ügyfél']);
