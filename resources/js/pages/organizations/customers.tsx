@@ -19,7 +19,15 @@ type Customer = {
     name: string;
     billingContact: keyof typeof billingLabels;
     doNotContact: boolean;
+    invoiceCount: number;
+    checkedOutstanding: string;
 };
+
+const huf = new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    maximumFractionDigits: 0,
+});
 
 export default function Customers({
     organization,
@@ -178,6 +186,26 @@ export default function Customers({
                                     </p>
                                 )}
                             </div>
+                            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Rögzített számlák
+                                    </dt>
+                                    <dd className="font-medium">
+                                        {customer.invoiceCount}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Ellenőrzött, nem vitatott kintlévőség
+                                    </dt>
+                                    <dd className="font-medium">
+                                        {huf.format(
+                                            BigInt(customer.checkedOutstanding),
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
                             <div className="flex flex-wrap gap-2">
                                 <Button variant="outline" asChild>
                                     <Link

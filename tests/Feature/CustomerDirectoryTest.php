@@ -35,9 +35,9 @@ class CustomerDirectoryTest extends TestCase
         $this->actingAs($member)->get($url)->assertInertia(fn (Assert $page) => $page
             ->component('organizations/customers')
             ->where('customers.data', [
-                ['id' => (string) $missing->id, 'name' => 'Alfa', 'billingContact' => 'missing', 'doNotContact' => false],
-                ['id' => (string) $pending->id, 'name' => 'Beta', 'billingContact' => 'unconfirmed', 'doNotContact' => false],
-                ['id' => (string) $confirmed->id, 'name' => 'Gamma', 'billingContact' => 'confirmed', 'doNotContact' => true],
+                ['id' => (string) $missing->id, 'name' => 'Alfa', 'billingContact' => 'missing', 'doNotContact' => false, 'invoiceCount' => 0, 'checkedOutstanding' => '0'],
+                ['id' => (string) $pending->id, 'name' => 'Beta', 'billingContact' => 'unconfirmed', 'doNotContact' => false, 'invoiceCount' => 0, 'checkedOutstanding' => '0'],
+                ['id' => (string) $confirmed->id, 'name' => 'Gamma', 'billingContact' => 'confirmed', 'doNotContact' => true, 'invoiceCount' => 0, 'checkedOutstanding' => '0'],
             ]));
         $this->get($url.'?billing_contact=confirmed&blocked=1&name=Gam')
             ->assertInertia(fn (Assert $page) => $page
@@ -116,6 +116,35 @@ class CustomerDirectoryTest extends TestCase
         $this->assertSame('cim@example.test', $customer->billing_email);
         $this->assertNotNull($customer->billing_email_confirmed_at);
         $this->assertSame($customer->id, $invoice->refresh()->customer_id);
+    }
+
+    public function test_customer_summary_counts_all_invoices_and_totals_only_checked_undisputed_balances(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $customer = $company->customers()->create(['display_name' => 'Alfa']);
+        $other = $company->customers()->create(['display_name' => 'Beta']);
+
+        foreach ([
+            ['status' => 'partially_paid', 'outstanding_amount' => 80_000, 'status_checked_at' => now()],
+            ['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now(), 'is_disputed' => true],
+            ['status' => 'paid', 'outstanding_amount' => 0, 'status_checked_at' => now()],
+            [],
+        ] as $number => $fields) {
+            $company->invoices()->create([
+                'customer_id' => $customer->id, 'invoice_number' => 'DEMO-'.$number, 'due_date' => '2026-12-01', 'gross_amount' => 120_000,
+            ])->forceFill($fields)->save();
+        }
+        $company->invoices()->create([
+            'customer_id' => $other->id, 'invoice_number' => 'OTHER', 'due_date' => '2026-12-01', 'gross_amount' => 120_000,
+        ])->forceFill(['status' => 'open', 'outstanding_amount' => 120_000, 'status_checked_at' => now()])->save();
+
+        $list = route('organizations.customers.index', $company);
+        $this->actingAs($member)->get($list.'?name=Alfa')->assertInertia(fn (Assert $page) => $page
+            ->has('customers.data', 1)
+            ->where('customers.data.0.invoiceCount', 4)
+            ->where('customers.data.0.checkedOutstanding', '80000'));
     }
 
     public function test_directory_remains_readable_only_until_the_closeout_deadline(): void

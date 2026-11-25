@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceStatus;
 use App\Http\Requests\Customers\FilterCustomersRequest;
 use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Http\Requests\Customers\UpdateCustomerNameRequest;
@@ -20,6 +21,13 @@ class CustomerController extends Controller
         $name = $filters['name'] ?? '';
         $billingContact = $filters['billing_contact'] ?? '';
         $customers = $company->customers()->getQuery()
+            ->select(['id', 'display_name', 'billing_email', 'billing_email_confirmed_at', 'do_not_contact'])
+            ->withCount('invoices')
+            ->withSum(['invoices as checked_outstanding' => static fn ($invoices) => $invoices
+                ->where('currency', 'HUF')
+                ->where('is_disputed', false)
+                ->whereIn('status', [InvoiceStatus::Open->value, InvoiceStatus::PartiallyPaid->value])
+                ->whereNotNull('status_checked_at')], 'outstanding_amount')
             ->when(is_string($name) && $name !== '', function ($query) use ($name) {
                 $escaped = strtr($name, ['!' => '!!', '%' => '!%', '_' => '!_']);
 
@@ -31,7 +39,7 @@ class CustomerController extends Controller
             ->when(isset($filters['blocked']), fn ($query) => $query->where('do_not_contact', true))
             ->orderBy('display_name')
             ->orderBy('id')
-            ->simplePaginate(25, ['id', 'display_name', 'billing_email', 'billing_email_confirmed_at', 'do_not_contact'])
+            ->simplePaginate(25)
             ->appends($filters)
             ->through(static fn (Customer $customer): array => [
                 'id' => (string) $customer->id,
@@ -42,6 +50,8 @@ class CustomerController extends Controller
                     default => 'confirmed',
                 },
                 'doNotContact' => $customer->do_not_contact,
+                'invoiceCount' => (int) $customer->getAttribute('invoices_count'),
+                'checkedOutstanding' => (string) ($customer->getAttribute('checked_outstanding') ?? 0),
             ]);
 
         return Inertia::render('organizations/customers', [
