@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Organizations\RevokeMemberAccessRequest;
+use App\Models\OrganizationInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,12 +41,19 @@ class OrganizationMemberController extends Controller
 
     public function destroy(RevokeMemberAccessRequest $request, string $organization, string $member): RedirectResponse
     {
-        $members = $request->company()->users()
+        $company = $request->company();
+        $members = $company->users()
             ->wherePivot('role', 'member')
             ->wherePivotIn('status', ['active', 'inactive']);
-        $selected = $members->findOrFail($member, ['users.id']);
+        $selected = $members->lockForUpdate()->findOrFail($member, ['users.id', 'users.email']);
 
-        $members->wherePivot('status', 'active')->updateExistingPivot($selected->id, ['status' => 'inactive']);
+        $revoked = $members->wherePivot('status', 'active')->updateExistingPivot($selected->id, ['status' => 'inactive']);
+        if ($revoked > 0) {
+            OrganizationInvitation::query()
+                ->where('organization_id', $company->id)
+                ->where('email_digest', OrganizationInvitation::digestEmail($selected->email))
+                ->delete();
+        }
 
         return to_route('organizations.members.index', $organization);
     }

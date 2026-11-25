@@ -7,6 +7,7 @@ use App\Http\Controllers\InvoiceImportController;
 use App\Http\Controllers\OrganizationCloseoutController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationExportController;
+use App\Http\Controllers\OrganizationInvitationController;
 use App\Http\Controllers\OrganizationMemberController;
 use App\Http\Controllers\ReminderDeliveryLogController;
 use App\Http\Controllers\ReminderDeliverySettingsController;
@@ -19,6 +20,14 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group(function () {
     Route::get('dashboard', [OrganizationController::class, 'index'])->name('dashboard');
+
+    Route::prefix('organization-invitations/{token}')
+        ->where(['token' => '[a-f0-9]{64}'])
+        ->name('organization-invitations.')
+        ->group(function () {
+            Route::get('/', [OrganizationInvitationController::class, 'show'])->name('show');
+            Route::post('/', [OrganizationInvitationController::class, 'accept'])->name('accept');
+        });
 
     Route::get('organizations/{organization}', [OrganizationController::class, 'show'])
         ->whereNumber('organization')
@@ -35,6 +44,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
             Route::post('closeout', [OrganizationCloseoutController::class, 'store'])->name('closeout');
             Route::middleware(EnsureOrganizationOperationsAvailable::class)->group(function () {
                 Route::get('members', [OrganizationMemberController::class, 'index'])->name('members.index');
+                Route::post('members/invitations', [OrganizationInvitationController::class, 'store'])
+                    ->middleware('throttle:15,1,organization-invitations')
+                    ->name('members.invitations.store');
                 Route::delete('members/{member}', [OrganizationMemberController::class, 'destroy'])
                     ->whereNumber('member')
                     ->name('members.destroy');

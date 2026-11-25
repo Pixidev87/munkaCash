@@ -1,8 +1,12 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { show } from '@/routes/organizations';
 import { destroy } from '@/routes/organizations/members';
+import { store } from '@/routes/organizations/members/invitations';
 
 type Member = { id: string; name: string; email: string };
 
@@ -16,6 +20,7 @@ type Props = {
 };
 
 export default function Members({ organization, members }: Props) {
+    const [invitationLink, setInvitationLink] = useState('');
     return (
         <div className="w-full max-w-3xl space-y-4 p-4 sm:p-6">
             <Head title={`Munkatársak · ${organization.name}`} />
@@ -28,6 +33,59 @@ export default function Members({ organization, members }: Props) {
             <p className="text-sm wrap-break-word text-muted-foreground">
                 {organization.name}
             </p>
+            <section className="space-y-3 rounded-xl border p-4">
+                <h2 className="font-semibold">Munkatárs meghívása</h2>
+                <Form
+                    {...store.form(organization.id)}
+                    resetOnSuccess
+                    onStart={() => setInvitationLink('')}
+                    onSuccess={(page) => {
+                        const path = page.flash.invitationPath;
+                        if (typeof path === 'string') {
+                            setInvitationLink(
+                                new URL(path, window.location.origin).href,
+                            );
+                        }
+                    }}
+                    className="space-y-2"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <Label htmlFor="invite-email">
+                                Meghívott e-mail-címe
+                            </Label>
+                            <Input
+                                id="invite-email"
+                                name="email"
+                                type="email"
+                                maxLength={255}
+                                required
+                            />
+                            <InputError message={errors.email} role="alert" />
+                            <Button type="submit" disabled={processing}>
+                                Meghívólink létrehozása
+                            </Button>
+                        </>
+                    )}
+                </Form>
+                {invitationLink && (
+                    <div className="space-y-2">
+                        <Label htmlFor="invitation-link">
+                            Megosztható meghívólink
+                        </Label>
+                        <Input
+                            id="invitation-link"
+                            readOnly
+                            value={invitationLink}
+                            onFocus={(event) => event.currentTarget.select()}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                            Küldd el a meghívottnak. A link egyszer használható
+                            és 24 óráig érvényes.
+                        </p>
+                    </div>
+                )}
+            </section>
             {members.data.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     Nincs aktív munkatárs ezen az oldalon.
