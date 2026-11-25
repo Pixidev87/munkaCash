@@ -39,6 +39,16 @@ class CustomerDirectoryTest extends TestCase
                 ['id' => (string) $pending->id, 'name' => 'Beta', 'billingContact' => 'unconfirmed', 'doNotContact' => false],
                 ['id' => (string) $confirmed->id, 'name' => 'Gamma', 'billingContact' => 'confirmed', 'doNotContact' => true],
             ]));
+        $this->get($url.'?billing_contact=confirmed&blocked=1&name=Gam')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.billingContact', 'confirmed')
+                ->where('filters.blocked', true)
+                ->has('customers.data', 1)
+                ->where('customers.data.0.id', (string) $confirmed->id));
+        $this->get($url.'?billing_contact=unconfirmed')
+            ->assertInertia(fn (Assert $page) => $page->has('customers.data', 1)->where('customers.data.0.id', (string) $pending->id));
+        $this->from($url)->get($url.'?billing_contact=invalid')
+            ->assertRedirect($url)->assertSessionHasErrorsIn('customerFilters', 'billing_contact');
         $this->get(route('organizations.customers.index', $other))->assertNotFound();
     }
 
