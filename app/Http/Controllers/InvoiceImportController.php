@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\InvoiceImport;
 use App\Services\InvoiceCsvImport;
 use App\Services\InvoiceCsvParser;
+use App\Services\SpreadsheetCsv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -127,6 +128,24 @@ class InvoiceImportController extends Controller
                 'unchanged' => $batch->unchanged_count,
             ] : null,
         ]);
+    }
+
+    public function errorReport(Request $request, string $organization, string $import, InvoiceCsvImport $service): StreamedResponse
+    {
+        $user = $request->user();
+        $company = $user->findActiveOrganization($organization);
+        $batch = $this->availableBatches($company->id, $user->id)->findOrFail($import);
+        abort_if($batch->rows === null, 404);
+
+        $errors = [];
+        foreach ($service->preview($company, $batch->rows) as $row) {
+            foreach ($row['errors'] as $issue) {
+                $errors[] = [$row['line'], $issue['column'], $issue['code'], $issue['message']];
+            }
+        }
+        abort_if($errors === [], 404);
+
+        return SpreadsheetCsv::download('munkacash-importhibak.csv', ['line', 'column', 'code', 'message'], $errors);
     }
 
     public function confirm(Request $request, string $organization, string $import, InvoiceCsvImport $service): RedirectResponse

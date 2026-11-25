@@ -14,13 +14,13 @@ class OrganizationCsvExport
         $rows = $organization->customers()->lazyById()
             ->map(fn (Customer $customer): array => [
                 $customer->id,
-                $this->spreadsheetText($customer->display_name),
-                $this->spreadsheetText($customer->billing_email),
+                $customer->display_name,
+                $customer->billing_email,
                 $customer->billing_email_confirmed_at?->toISOString(),
                 $customer->do_not_contact ? 1 : 0,
             ]);
 
-        return $this->download('ugyfelek', $organization, [
+        return SpreadsheetCsv::download('munkacash-ugyfelek-'.$organization->id.'.csv', [
             'customer_id', 'display_name', 'billing_email', 'billing_email_confirmed_at_utc', 'do_not_contact',
         ], $rows);
     }
@@ -31,7 +31,7 @@ class OrganizationCsvExport
             ->map(fn (Invoice $invoice): array => [
                 $invoice->id,
                 $invoice->customer_id,
-                $this->spreadsheetText($invoice->invoice_number),
+                $invoice->invoice_number,
                 $invoice->due_date->toDateString(),
                 $invoice->currency,
                 $invoice->gross_amount,
@@ -41,52 +41,9 @@ class OrganizationCsvExport
                 $invoice->is_disputed ? 1 : 0,
             ]);
 
-        return $this->download('szamlak', $organization, [
+        return SpreadsheetCsv::download('munkacash-szamlak-'.$organization->id.'.csv', [
             'invoice_id', 'customer_id', 'invoice_number', 'due_date', 'currency',
             'gross_amount', 'outstanding_amount', 'status', 'status_checked_at_utc', 'is_disputed',
         ], $rows);
-    }
-
-    /**
-     * @param  list<string>  $header
-     * @param  iterable<list<int|string|null>>  $rows
-     */
-    private function download(string $type, Organization $organization, array $header, iterable $rows): StreamedResponse
-    {
-        return response()->streamDownload(
-            static function () use ($header, $rows): void {
-                $output = fopen('php://output', 'wb');
-
-                if ($output === false) {
-                    throw new \RuntimeException('Unable to open the CSV response stream.');
-                }
-
-                try {
-                    fwrite($output, "\xEF\xBB\xBF");
-                    fputcsv($output, $header, ';', '"', '', "\r\n");
-
-                    foreach ($rows as $row) {
-                        fputcsv($output, $row, ';', '"', '', "\r\n");
-                    }
-                } finally {
-                    fclose($output);
-                }
-            },
-            'munkacash-'.$type.'-'.$organization->id.'.csv',
-            [
-                'Content-Type' => 'text/csv; charset=UTF-8',
-                'Cache-Control' => 'private, no-store, max-age=0',
-                'X-Content-Type-Options' => 'nosniff',
-            ],
-        );
-    }
-
-    private function spreadsheetText(?string $value): ?string
-    {
-        if ($value !== null && preg_match('/\A(?:\p{Cc}|[\p{Z}\p{Cf}\s]*[=+@\-＝＋＠－])/u', $value) === 1) {
-            return "'".$value;
-        }
-
-        return $value;
     }
 }

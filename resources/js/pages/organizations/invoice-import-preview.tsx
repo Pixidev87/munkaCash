@@ -1,7 +1,11 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { confirm, create } from '@/routes/organizations/invoice-imports';
+import {
+    confirm,
+    create,
+    errorReport,
+} from '@/routes/organizations/invoice-imports';
 import { index } from '@/routes/organizations/invoices';
 
 const statusLabels = {
@@ -104,6 +108,22 @@ export default function InvoiceImportPreview({
                             )}
                         </dl>
                     )}
+                    {previewCounts &&
+                        previewCounts.invalid + previewCounts.conflict > 0 && (
+                            <Button asChild variant="outline">
+                                <a
+                                    href={
+                                        errorReport({
+                                            organization: organizationId,
+                                            import: importId,
+                                        }).url
+                                    }
+                                    download
+                                >
+                                    Hibajelentés letöltése
+                                </a>
+                            </Button>
+                        )}
                     <Form
                         {...confirm.form({
                             organization: organizationId,

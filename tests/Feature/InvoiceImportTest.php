@@ -189,6 +189,31 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoices', 0);
     }
 
+    public function test_error_report_is_private_to_its_uploader_and_contains_safe_diagnostics(): void
+    {
+        [$company, $user, $customer] = $this->createCompany();
+        $coworker = User::factory()->create();
+        $coworker->organizations()->attach($company, ['status' => 'active']);
+        $this->actingAs($user);
+        $invalid = $this->upload($company, "{$customer};RAW-123;2026-02-30;HUF;120000");
+        $report = route('organizations.invoice-imports.error-report', [$company, $invalid]);
+        $content = $this->get($report)->assertDownload('munkacash-importhibak.csv')->streamedContent();
+        $this->assertStringContainsString('2;due_date;invalid_value;', $content);
+        $this->assertStringNotContainsString('RAW-123', $content);
+        $this->actingAs($coworker)->get($report)->assertNotFound();
+
+        $this->actingAs($user);
+        $legacy = InvoiceImport::create([
+            'organization_id' => $company->id,
+            'user_id' => $user->id,
+            'rows' => [['line' => 2, 'data' => null, 'errors' => ['=1+1']]],
+            'expires_at' => now()->addMinutes(30),
+        ]);
+        $this->assertStringContainsString(";legacy_row_error;'=1+1", $this->get(
+            route('organizations.invoice-imports.error-report', [$company, $legacy]),
+        )->streamedContent());
+    }
+
     public function test_import_history_only_shows_the_users_unexpired_batches_in_the_company(): void
     {
         [$company, $user, $customer] = $this->createCompany();
