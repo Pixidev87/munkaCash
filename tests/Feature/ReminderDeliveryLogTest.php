@@ -133,6 +133,27 @@ class ReminderDeliveryLogTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('deliveries.data', 1));
     }
 
+    public function test_status_totals_cover_all_filtered_pages_within_the_company(): void
+    {
+        $company = Organization::factory()->create();
+        $invoice = $this->invoice($company, '00042');
+        foreach (range(1, 20) as $index) {
+            $this->delivery($invoice, ReminderTestDeliveryStatus::Pending);
+        }
+        $this->delivery($invoice, ReminderTestDeliveryStatus::Unknown);
+        $this->delivery($this->invoice($company, '00043'), ReminderTestDeliveryStatus::Accepted);
+        $this->delivery($this->invoice(Organization::factory()->create(), '00042'), ReminderTestDeliveryStatus::Pending);
+        $params = ['organization' => $company, 'invoice_number' => '00042', 'page' => 2];
+
+        $this->actingAs($this->memberOf($company))->get(route('organizations.reminder-deliveries.index', $params))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('deliveries.data', 1)
+                ->where('totals.total', 21)
+                ->where('totals.byStatus.pending', 20)
+                ->where('totals.byStatus.unknown', 1)
+                ->where('totals.byStatus.accepted', 0));
+    }
+
     public function test_guests_and_users_without_an_active_membership_cannot_read_the_log(): void
     {
         $company = Organization::factory()->create();

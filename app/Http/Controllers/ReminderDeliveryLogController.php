@@ -14,7 +14,9 @@ class ReminderDeliveryLogController extends Controller
     {
         $company = $request->user()->findActiveOrganization($organization);
         $filters = $request->criteria();
-        $deliveries = $log->matching($company, $filters)
+        $matching = $log->matching($company, $filters);
+        $totals = $log->totals($matching);
+        $deliveries = $matching
             ->select([
                 'reminder_test_deliveries.id', 'reminder_test_deliveries.status', 'reminder_test_deliveries.reason',
                 'reminder_test_deliveries.available_at', 'reminder_test_deliveries.created_at', 'reminder_test_deliveries.updated_at',
@@ -44,6 +46,7 @@ class ReminderDeliveryLogController extends Controller
                 'queuedFrom' => $filters['queued_from'] ?? null,
                 'queuedTo' => $filters['queued_to'] ?? null,
             ],
+            'totals' => $totals,
             'deliveries' => $deliveries,
         ]);
     }

@@ -32,11 +32,20 @@ type Props = {
         queuedFrom: string | null;
         queuedTo: string | null;
     };
+    totals: { total: number; byStatus: Record<DeliveryStatus, number> };
     deliveries: {
         data: Delivery[];
         prev_page_url: string | null;
         next_page_url: string | null;
     };
+};
+
+const summaryLabels: Record<DeliveryStatus, string> = {
+    pending: 'Várakozik',
+    sending: 'Feldolgozás alatt',
+    accepted: 'Mailpit átvette',
+    blocked: 'Letiltva',
+    unknown: 'Bizonytalan átvétel',
 };
 
 const formattedDate = new Intl.DateTimeFormat('hu-HU', {
@@ -49,6 +58,7 @@ export default function ReminderDeliveryLog({
     organization,
     filters,
     deliveries,
+    totals,
 }: Props) {
     const filtered =
         filters.status !== null ||
@@ -187,6 +197,23 @@ export default function ReminderDeliveryLog({
                 )}
             </Form>
 
+            <dl
+                aria-label="Szűrt tesztküldések összesítése"
+                className="grid grid-cols-2 gap-3 rounded-xl border p-4 text-sm sm:grid-cols-3"
+            >
+                <div>
+                    <dt className="text-muted-foreground">Összes találat</dt>
+                    <dd className="font-semibold">{totals.total}</dd>
+                </div>
+                {Object.entries(totals.byStatus).map(([status, count]) => (
+                    <div key={status}>
+                        <dt className="text-muted-foreground">
+                            {summaryLabels[status as DeliveryStatus]}
+                        </dt>
+                        <dd className="font-semibold">{count}</dd>
+                    </div>
+                ))}
+            </dl>
             {deliveries.data.length ? (
                 <ul
                     className="divide-y rounded-xl border"
