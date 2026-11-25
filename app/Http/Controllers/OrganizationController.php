@@ -40,6 +40,7 @@ class OrganizationController extends Controller
                 'exportAvailable' => $selected->exportAvailable(),
             ] : null,
             'canStartCloseout' => ! $selected->isClosing() && $request->user()->can('closeout', $selected),
+            'canManageMembers' => $request->user()->can('manageMembers', $selected),
             'canManageReminders' => $request->user()->can('approveReminder', $selected),
         ]);
     }

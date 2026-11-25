@@ -12,6 +12,11 @@ class OrganizationPolicy
         return ! $organization->isClosing() && $this->isActiveOwner($user, $organization);
     }
 
+    public function manageMembers(User $user, Organization $organization): bool
+    {
+        return ! $organization->isClosing() && $this->isActiveOwner($user, $organization);
+    }
+
     public function exportData(User $user, Organization $organization): bool
     {
         return $this->isActiveOwner($user, $organization);

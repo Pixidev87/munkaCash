@@ -9,6 +9,7 @@ import {
 } from '@/routes/organizations';
 import { customers, invoices } from '@/routes/organizations/exports';
 import { index } from '@/routes/organizations/invoices';
+import { index as members } from '@/routes/organizations/members';
 import { index as deliveryLog } from '@/routes/organizations/reminder-deliveries';
 
 const localDate = new Intl.DateTimeFormat('hu-HU', {
@@ -22,6 +23,7 @@ export default function OrganizationPage({
     organizationId,
     remindersEnabled,
     canManageReminders,
+    canManageMembers,
     canExportData,
     closeout,
     canStartCloseout,
@@ -30,6 +32,7 @@ export default function OrganizationPage({
     organizationId: string;
     remindersEnabled: boolean;
     canManageReminders: boolean;
+    canManageMembers: boolean;
     canExportData: boolean;
     canStartCloseout: boolean;
     closeout: { exportUntil: string | null; exportAvailable: boolean } | null;
@@ -129,6 +132,13 @@ export default function OrganizationPage({
                         )}
                     </section>
                 </>
+            )}
+            {canManageMembers && (
+                <Button asChild variant="outline">
+                    <Link href={members(organizationId)}>
+                        Munkatársak kezelése
+                    </Link>
+                </Button>
             )}
             {canExportData && (
                 <section className="w-full space-y-3 rounded-xl border p-4">
