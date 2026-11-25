@@ -6,6 +6,9 @@ const actions = {
     invitation_issued: 'Meghívó kiadása',
     invitation_accepted: 'Meghívó elfogadása',
     invitation_cancelled: 'Meghívó visszavonása',
+    customers_export: 'Ügyfelek CSV-exportjának kérése',
+    invoices_export: 'Teljes számlaexport kérése',
+    filtered_invoices_export: 'Szűrt számlaexport kérése',
     member_revoked: 'Munkatársi hozzáférés visszavonása',
 };
 

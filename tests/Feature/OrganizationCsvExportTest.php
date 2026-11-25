@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Organization;
+use App\Models\OrganizationAccessEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -136,6 +137,42 @@ class OrganizationCsvExportTest extends TestCase
                     && ! str_contains($url, 'page=') && ! str_contains($url, 'sort=')));
         $this->actingAs($member)->get($list)
             ->assertInertia(fn (Assert $page) => $page->where('filteredExportUrl', null));
+    }
+
+    public function test_export_audit_records_authorized_requests_without_export_parameters(): void
+    {
+        $company = Organization::factory()->create();
+        $owner = $this->attach($company, 'owner');
+        $member = $this->attach($company, 'member');
+        $filtered = route('organizations.exports.filtered-invoices', [$company, 'invoice_number' => '00042']);
+
+        $this->actingAs($member)->get($filtered)->assertForbidden();
+        $this->actingAs($owner)->head($filtered)->assertOk();
+        $this->getJson(route('organizations.exports.filtered-invoices', [$company, 'due_from' => 'invalid']))
+            ->assertUnprocessable();
+        $this->assertDatabaseCount('organization_access_events', 0);
+
+        $this->get($filtered)->assertDownload();
+        $this->get(route('organizations.exports.customers', $company))->assertDownload();
+        $this->get(route('organizations.exports.invoices', $company))->assertDownload();
+        $this->assertDatabaseCount('organization_access_events', 3);
+        $this->assertDatabaseHas('organization_access_events', [
+            'organization_id' => $company->id,
+            'actor_id' => $owner->id,
+            'subject_id' => null,
+            'action' => 'filtered_invoices_export',
+        ]);
+        $this->get(route('organizations.access-log', $company))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('events.data', 3)
+                ->where('events.data.0.action', 'invoices_export')
+                ->where('events.data.1.action', 'customers_export')
+                ->where('events.data.2.action', 'filtered_invoices_export')
+                ->where('events.data.2.actor', $owner->name)
+                ->missing('events.data.2.filters'));
+        $this->travel(90)->days();
+        $this->artisan('model:prune', ['--model' => [OrganizationAccessEvent::class]])->assertSuccessful();
+        $this->assertDatabaseCount('organization_access_events', 0);
     }
 
     private function attach(Organization $company, string $role, ?User $user = null): User

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrganizationAccessAction;
 use App\Http\Requests\Invoices\ExportFilteredInvoicesRequest;
+use App\Models\Organization;
+use App\Models\OrganizationAccessEvent;
 use App\Services\InvoiceListQuery;
 use App\Services\OrganizationCsvExport;
 use Illuminate\Http\Request;
@@ -17,6 +20,8 @@ class OrganizationExportController extends Controller
         Gate::authorize('exportData', $company);
         abort_unless($company->exportAvailable(), 410, 'A cég exportálási időszaka lejárt.');
 
+        $this->recordRequest($request, $company, OrganizationAccessAction::CustomerExport);
+
         return $export->customers($company);
     }
 
@@ -25,6 +30,8 @@ class OrganizationExportController extends Controller
         $company = $request->user()->findActiveOrganization($organization);
         Gate::authorize('exportData', $company);
         abort_unless($company->exportAvailable(), 410, 'A cég exportálási időszaka lejárt.');
+
+        $this->recordRequest($request, $company, OrganizationAccessAction::InvoiceExport);
 
         return $export->invoices($company);
     }
@@ -36,6 +43,15 @@ class OrganizationExportController extends Controller
     ): StreamedResponse {
         $company = $request->company();
 
+        $this->recordRequest($request, $company, OrganizationAccessAction::FilteredInvoiceExport);
+
         return $export->filteredInvoices($company, $invoiceList->matching($company, $request->criteriaWithoutSort()));
+    }
+
+    private function recordRequest(Request $request, Organization $company, OrganizationAccessAction $action): void
+    {
+        if ($request->isMethod('GET')) {
+            OrganizationAccessEvent::record($company, $request->user(), $action);
+        }
     }
 }
