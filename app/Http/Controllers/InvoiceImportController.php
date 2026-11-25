@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Invoices\DiscardInvoiceImportRequest;
 use App\Http\Requests\Invoices\DownloadInvoiceTemplateRequest;
+use App\Http\Requests\Invoices\FilterInvoiceImportsRequest;
 use App\Http\Requests\Invoices\UploadInvoiceCsvRequest;
 use App\Models\Customer;
 use App\Models\InvoiceImport;
@@ -23,15 +24,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceImportController extends Controller
 {
-    public function index(Request $request, string $organization): Response
+    public function index(FilterInvoiceImportsRequest $request, string $organization): Response
     {
         $user = $request->user();
         $company = $user->findActiveOrganization($organization);
+        $status = $request->validated('status');
         $imports = $this->availableBatches($company->id, $user->id)
+            ->when($status === 'pending', fn ($query) => $query->whereNotNull('rows'))
+            ->when($status === 'completed', fn ($query) => $query->whereNull('rows'))
             ->select(['id', 'created_at', 'expires_at', 'created_count', 'unchanged_count'])
             ->latest('created_at')
             ->latest('id')
             ->simplePaginate(20)
+            ->appends(['status' => $status])
             ->through(static fn (InvoiceImport $import): array => [
                 'id' => $import->id,
                 'createdAt' => $import->created_at?->toISOString(),
@@ -42,6 +47,7 @@ class InvoiceImportController extends Controller
 
         return Inertia::render('organizations/invoice-import-history', [
             'organizationId' => (string) $company->id,
+            'status' => $status,
             'imports' => $imports,
         ]);
     }

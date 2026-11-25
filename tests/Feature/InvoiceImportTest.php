@@ -254,6 +254,13 @@ class InvoiceImportTest extends TestCase
                 ->missing('imports.data.0.rows')
                 ->where('imports.data.1.id', $completed->id)
                 ->where('imports.data.1.created', 1));
+        $this->get(route('organizations.invoice-imports.index', [$company, 'status' => 'pending']))
+            ->assertInertia(fn (Assert $page) => $page->where('status', 'pending')
+                ->has('imports.data', 1)->where('imports.data.0.id', $pending->id));
+        $this->get(route('organizations.invoice-imports.index', [$company, 'status' => 'completed']))
+            ->assertInertia(fn (Assert $page) => $page->has('imports.data', 1)->where('imports.data.0.id', $completed->id));
+        $this->getJson(route('organizations.invoice-imports.index', [$company, 'status' => 'invalid']))
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
     }
 
     public function test_uploader_can_discard_only_pending_imports_after_confirmation(): void
