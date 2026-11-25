@@ -12,7 +12,7 @@ use App\Models\Organization;
  * @phpstan-import-type CsvIssue from InvoiceCsvParser
  * @phpstan-import-type InvoiceData from InvoiceCsvParser
  *
- * @phpstan-type PreviewRow array{line: int, data: InvoiceData|null, errors: list<CsvIssue>, status: 'invalid'|'conflict'|'unchanged'|'new'}
+ * @phpstan-type PreviewRow array{line: int, data: InvoiceData|null, errors: list<CsvIssue>, customerName: string|null, status: 'invalid'|'conflict'|'unchanged'|'new'}
  */
 class InvoiceCsvImport
 {
@@ -32,10 +32,11 @@ class InvoiceCsvImport
             }
         }
 
-        $customers = $company->customers()->whereKey(array_unique($customerIds))->pluck('id')->flip();
+        $customers = $company->customers()->whereKey(array_unique($customerIds))->pluck('display_name', 'id');
 
         return array_map(function (array $row) use ($company, $numbers, $customers): array {
             $data = $row['data'];
+            $row['customerName'] = $data === null ? null : $customers->get($data['customer_id']);
             $row['errors'] = array_map(static fn (array|string $error): array => is_string($error)
                 ? ['code' => 'legacy_row_error', 'column' => null, 'message' => $error]
                 : $error, $row['errors']);

@@ -20,6 +20,7 @@ const statusLabels = {
 
 type PreviewRow = {
     line: number;
+    customerName: string | null;
     data: {
         customer_id: string;
         invoice_number: string;
@@ -320,8 +321,11 @@ export default function InvoiceImportPreview({
                                     </div>
                                     {row.data && (
                                         <p className="text-muted-foreground">
-                                            Ügyfél: {row.data.customer_id} ·
-                                            Határidő: {row.data.due_date} ·{' '}
+                                            Ügyfél:{' '}
+                                            {row.customerName
+                                                ? `${row.customerName} (#${row.data.customer_id})`
+                                                : `#${row.data.customer_id}`}{' '}
+                                            · Határidő: {row.data.due_date} ·{' '}
                                             {huf.format(row.data.gross_amount)}
                                         </p>
                                     )}
