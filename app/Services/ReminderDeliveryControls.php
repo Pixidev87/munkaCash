@@ -15,6 +15,8 @@ class ReminderDeliveryControls
 
     public const string INVOICE_DISPUTED = 'invoice_disputed';
 
+    public const string BALANCE_UNVERIFIED = 'balance_unverified';
+
     public function blocker(Organization $company, Invoice $invoice): ?string
     {
         return match (true) {

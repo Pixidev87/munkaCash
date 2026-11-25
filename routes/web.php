@@ -90,6 +90,9 @@ Route::middleware(['auth', 'verified', 'cache.headers:private;no_store'])->group
                 Route::patch('invoices/{invoice}/balance', [InvoiceController::class, 'updateBalance'])
                     ->whereNumber('invoice')
                     ->name('invoices.balance.update');
+                Route::delete('invoices/{invoice}/balance', [InvoiceController::class, 'resetBalance'])
+                    ->whereNumber('invoice')
+                    ->name('invoices.balance.destroy');
                 Route::patch('invoices/{invoice}/dispute', [InvoiceController::class, 'updateDispute'])
                     ->whereNumber('invoice')
                     ->name('invoices.dispute.update');

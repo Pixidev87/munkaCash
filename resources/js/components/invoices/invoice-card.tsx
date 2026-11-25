@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index, reminderPreview } from '@/routes/organizations/invoices';
-import { update } from '@/routes/organizations/invoices/balance';
+import { destroy, update } from '@/routes/organizations/invoices/balance';
 import { update as updateDispute } from '@/routes/organizations/invoices/dispute';
 
 export const invoiceStatusLabels = {
@@ -56,6 +56,7 @@ export default function InvoiceCard({
     readOnly?: boolean;
 }) {
     const amountId = `balance-${invoice.id}`;
+    const resetBalanceId = `reset-balance-${invoice.id}`;
     const disputeId = `dispute-${invoice.id}`;
 
     return (
@@ -115,6 +116,7 @@ export default function InvoiceCard({
 
             {!readOnly && (
                 <Form
+                    key={invoice.outstanding ?? 'unknown'}
                     {...update.form({
                         organization: organizationId,
                         invoice: invoice.id,
@@ -170,6 +172,54 @@ export default function InvoiceCard({
                         </>
                     )}
                 </Form>
+            )}
+            {!readOnly && invoice.outstanding !== null && (
+                <details className="space-y-2 rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                        Egyenleg visszavonása
+                    </summary>
+                    <Form
+                        {...destroy.form({
+                            organization: organizationId,
+                            invoice: invoice.id,
+                        })}
+                        errorBag={resetBalanceId}
+                        options={{ preserveScroll: true }}
+                        className="space-y-2"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <input
+                                    type="hidden"
+                                    name="revision"
+                                    value={invoice.revision}
+                                />
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        name="confirm"
+                                        value="1"
+                                        required
+                                        className="mt-1"
+                                    />
+                                    Megerősítem, hogy az egyenleg új ellenőrzést
+                                    igényel.
+                                </label>
+                                <InputError
+                                    message={errors.confirm ?? errors.revision}
+                                    role="alert"
+                                />
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                >
+                                    Új ellenőrzés szükséges
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </details>
             )}
             <Button asChild variant="outline">
                 <Link

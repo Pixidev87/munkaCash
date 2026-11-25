@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Enums\InvoiceSource;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\FilterInvoicesRequest;
+use App\Http\Requests\Invoices\ResetInvoiceBalanceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDisputeRequest;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Services\OverdueInvoices;
+use App\Services\ReminderDeliveryControls;
 use App\Services\ReminderTestQueue;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -136,6 +138,31 @@ class InvoiceController extends Controller
         return back();
     }
 
+    public function resetBalance(ResetInvoiceBalanceRequest $request, string $organization, string $invoice, ReminderTestQueue $queue): RedirectResponse
+    {
+        $company = $request->user()->findActiveOrganization($organization);
+        $selected = $company->invoices()->lockForUpdate()->findOrFail($invoice);
+
+        if ($selected->revision !== $request->revision()) {
+            throw ValidationException::withMessages([
+                'revision' => 'A számla közben változott. Ellenőrizd a friss állapotot, majd próbáld újra.',
+            ])->errorBag($request->errorBagName());
+        }
+
+        if ($selected->outstanding_amount !== null || $selected->status !== InvoiceStatus::Unchecked) {
+            $selected->increment('revision', 1, [
+                'outstanding_amount' => null,
+                'status' => InvoiceStatus::Unchecked->value,
+                'status_source' => null,
+                'status_checked_at' => null,
+                'checked_by' => null,
+            ]);
+            $queue->blockPendingForInvoice($selected, ReminderDeliveryControls::BALANCE_UNVERIFIED);
+        }
+
+        return back();
+    }
+
     public function updateDispute(UpdateInvoiceDisputeRequest $request, string $organization, string $invoice, ReminderTestQueue $queue): RedirectResponse
     {
         $company = $request->user()->findActiveOrganization($organization);
@@ -153,7 +180,7 @@ class InvoiceController extends Controller
         }
 
         if ($disputed) {
-            $queue->blockPendingForInvoice($selected);
+            $queue->blockPendingForInvoice($selected, ReminderDeliveryControls::INVOICE_DISPUTED);
         }
 
         return back();

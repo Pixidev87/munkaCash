@@ -25,9 +25,9 @@ class ReminderTestQueue
         $this->blockPendingForInvoices($invoices->getQuery(), $reason);
     }
 
-    public function blockPendingForInvoice(Invoice $invoice): void
+    public function blockPendingForInvoice(Invoice $invoice, string $reason): void
     {
-        $this->blockPendingForInvoices(Invoice::query()->whereKey($invoice->id)->select('id'), ReminderDeliveryControls::INVOICE_DISPUTED);
+        $this->blockPendingForInvoices(Invoice::query()->whereKey($invoice->id)->select('id'), $reason);
     }
 
     /** @param Builder<Invoice> $invoices */

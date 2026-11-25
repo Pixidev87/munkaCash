@@ -183,6 +183,28 @@ class InvoiceTrackingTest extends TestCase
         ]);
     }
 
+    public function test_resetting_a_paid_balance_requires_confirmation_current_revision_and_company_scope(): void
+    {
+        $company = Organization::factory()->create();
+        $member = User::factory()->create();
+        $member->organizations()->attach($company, ['status' => 'active']);
+        $invoice = $this->createInvoice($company);
+        $other = $this->createInvoice(Organization::factory()->create());
+        $invoice->forceFill(['outstanding_amount' => 0, 'status' => 'paid', 'revision' => 2, 'is_disputed' => true])->save();
+        $reset = route('organizations.invoices.balance.destroy', [$company, $invoice]);
+        $bag = 'reset-balance-'.$invoice->id;
+
+        $this->actingAs($member)->delete($reset, ['revision' => 2])->assertSessionHasErrorsIn($bag, 'confirm');
+        $this->delete($reset, ['confirm' => true, 'revision' => 1])->assertSessionHasErrorsIn($bag, 'revision');
+        $this->delete(route('organizations.invoices.balance.destroy', [$company, $other]), ['confirm' => true, 'revision' => 0])->assertNotFound();
+        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'status' => 'paid', 'outstanding_amount' => 0]);
+
+        $this->delete($reset, ['confirm' => true, 'revision' => 2])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id, 'status' => 'unchecked', 'outstanding_amount' => null, 'revision' => 3, 'is_disputed' => true,
+        ]);
+    }
+
     public function test_invoice_filters_combine_within_the_company_and_use_the_complete_invoice_number(): void
     {
         $company = Organization::factory()->create();
